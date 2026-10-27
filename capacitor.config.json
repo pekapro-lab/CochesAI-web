@@ -1,0 +1,12 @@
+{
+  "appId": "com.pekapro.cochesai",
+  "appName": "CochesAI",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0a0a0f"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

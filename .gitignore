@@ -4,3 +4,10 @@ dist
 *.local
 .DS_Store
 .tmp
+android/.gradle/
+android/app/build/
+android/build/
+android/keystore.properties
+android/local.properties
+android/keystore.properties
+www/
