@@ -43,9 +43,17 @@ export const RaceMixin = {
       if (seg >= dist) { const u = dist / seg; x += (q.x - x) * u; z += (q.z - z) * u; break }
       dist -= seg; x = q.x; z = q.z; i = (i - 1 + N) % N
     }
-    const a = P[(i - 1 + N) % N], b = P[(i + 1) % N]
-    const tl = Math.hypot(b.x - a.x, b.z - a.z) || 1
-    const fx = (b.x - a.x) / tl, fz = (b.z - a.z) / tl
+    // Heading: aim at the centreline ~12 m ahead (a 2-point tangent can be 20° off where the
+    // start area curves, which pointed the car at the wall and looked like it veered at launch).
+    let j = i, ahead = 12, ax = x, az = z
+    while (ahead > 0) {
+      const q = P[(j + 1) % N]
+      const seg = Math.hypot(q.x - ax, q.z - az)
+      if (seg >= ahead) { const u = ahead / seg; ax += (q.x - ax) * u; az += (q.z - az) * u; break }
+      ahead -= seg; ax = q.x; az = q.z; j = (j + 1) % N
+    }
+    const tl = Math.hypot(ax - x, az - z) || 1
+    const fx = (ax - x) / tl, fz = (az - z) / tl
     const side = (k % 2 === 0 ? 1 : -1) * Math.min(2.4, this.track.roadWidth / 2 - 2.4)
     return { x: x - fz * side, y: s.y, z: z + fx * side, yaw: Math.atan2(fx, fz) }
   },
@@ -201,6 +209,7 @@ export const RaceMixin = {
     this.lapStart = performance.now()
     if (r.finished) {
       this.state = 'finished'
+      this.audio.silence()
       this.ui.showCountdown(`META · ${r.place}º`)
       this.audio.beep(990, 0.25)
       setTimeout(() => this.ui.hideCountdown(), 1600)

@@ -1,7 +1,7 @@
 {
   "name": "cochesai-web",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,8 @@
     "test:laps": "vite build && node scripts/lap-offsets.mjs && node scripts/corridor-escape.mjs",
     "test:ai": "vite build && node scripts/ai-race.mjs",
     "test:mp": "vite build && node scripts/multiplayer.mjs",
-    "test:all": "vite build && node scripts/ground-scan.mjs && node scripts/lap-offsets.mjs && node scripts/corridor-escape.mjs && node scripts/ai-race.mjs && node scripts/multiplayer.mjs",
+    "test:start": "vite build && node scripts/start-straight.mjs",
+    "test:all": "vite build && node scripts/start-straight.mjs && node scripts/ground-scan.mjs && node scripts/lap-offsets.mjs && node scripts/corridor-escape.mjs && node scripts/ai-race.mjs && node scripts/multiplayer.mjs",
     "build:apk": "VITE_BASE=./ vite build --outDir www && npx cap sync android"
   },
   "dependencies": {

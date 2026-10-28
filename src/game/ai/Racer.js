@@ -124,6 +124,6 @@ export function guardBot(racer, track, dt, reset) {
     if (body.velocity.y < 0) body.velocity.y = 0
   }
   racer._air = wheels === 0 ? (racer._air || 0) + dt : 0
-  if (wheels === 0 && body.position.y > 0.55) body.applyForce(new CANNON.Vec3(0, -7000, 0), body.position)
+  if (wheels === 0 && body.position.y > 0.55) body.applyForce(new CANNON.Vec3(0, -7000, 0))
   if (racer._air > 2.2) reset('air')
 }

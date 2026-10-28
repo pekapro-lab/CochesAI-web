@@ -136,6 +136,11 @@ export class Game {
       this.ui.setTimeOfDay(this.timeOfDay)
     }
     this.ui.bindTouch(this.input)
+    // Background/lock screen: never leave the engine droning
+    document.addEventListener('visibilitychange', () => {
+      this.audio.setHidden(document.hidden)
+      if (document.hidden && this.state === 'racing' && !this.net) this.pause?.()
+    })
     this.ui.setTimeOfDay(this.timeOfDay)
   }
 
@@ -268,6 +273,7 @@ export class Game {
   pause() {
     if (this.state !== 'racing') return
     this.state = 'paused'
+    this.audio.silence()
     this.ui.showPause(true)
   }
 
@@ -294,6 +300,7 @@ export class Game {
   }
 
   cleanupRace() {
+    this.audio.silence(true)
     this.input.unbind()
     if (this.racers) for (const r of this.racers) if (r !== this.me) r.car.dispose()
     this.racers = null
@@ -358,6 +365,11 @@ export class Game {
       this.car.update(dt, { throttle: 0, brake: 0, steer: 0, handbrake: true })
       this._raceAfterStep(dt)
     }
+    if (this.state !== 'racing' && this.audio.engineLevel() > 0.001 && !this._silenced) {
+      this.audio.silence()
+      this._silenced = true
+    }
+    if (this.state === 'racing') this._silenced = false
     if (this.state === 'paused' || this.state === 'menu') {
       this.renderer.render(this.scene, this.camera)
       return
@@ -515,7 +527,7 @@ export class Game {
       this._recoverGrace = Math.max(0, this._recoverGrace - dt)
       // During grace, gently push the car onto its wheels
       if (wheels === 0) {
-        body.applyForce(new CANNON.Vec3(0, -9000, 0), body.position)
+        body.applyForce(new CANNON.Vec3(0, -9000, 0))
       }
       this._stuckTime = 0
       this._airTime = 0
@@ -534,7 +546,7 @@ export class Game {
 
     // Mild downforce while airborne so rays reconnect
     if (wheels === 0 && pos.y > 0.55 && body.velocity.y > -2) {
-      body.applyForce(new CANNON.Vec3(0, -7000, 0), body.position)
+      body.applyForce(new CANNON.Vec3(0, -7000, 0))
     }
 
     // Stuck while trying to move (forward OR reverse) — auto Recolocar for both
@@ -551,7 +563,6 @@ export class Game {
         // Pull toward centerline; don't fight forward/reverse engine force with huge Y pops
         body.applyForce(
           new CANNON.Vec3((dx / len) * 3500 * dt, 2500 * dt, (dz / len) * 3500 * dt),
-          body.position,
         )
         body.angularVelocity.x *= 0.7
         body.angularVelocity.z *= 0.7
@@ -633,6 +644,7 @@ export class Game {
         }
         if (this.lap >= this.totalLaps) {
           this.state = 'finished'
+          this.audio.silence()
           this.ui.showCountdown('META')
           this.audio.beep(990, 0.25)
           setTimeout(() => {

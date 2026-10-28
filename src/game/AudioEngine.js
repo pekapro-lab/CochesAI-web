@@ -105,6 +105,29 @@ export class AudioEngine {
     e.gain.gain.setTargetAtTime(vol, t, 0.06)
   }
 
+  /** Fade the engine out (race finished, pause, menu, app hidden). */
+  silence(fast = false) {
+    if (!this._engine) return
+    const t = this.ctx.currentTime
+    const g = this._engine.gain.gain
+    g.cancelScheduledValues(t)
+    g.setValueAtTime(g.value, t)
+    g.setTargetAtTime(0.0001, t, fast ? 0.02 : 0.12)
+    this._rpm = 900
+  }
+
+  /** Current engine gain (tests/debug). */
+  engineLevel() {
+    return this._engine ? this._engine.gain.gain.value : 0
+  }
+
+  /** App hidden/background (Android/iOS): suspend the whole context; resume on return. */
+  setHidden(hidden) {
+    if (!this.ctx) return
+    if (hidden) { this.silence(true); this.ctx.suspend?.().catch(() => {}) }
+    else this.ctx.resume?.().catch(() => {})
+  }
+
   beep(freq = 660, dur = 0.12) {
     if (!this.ctx || this.muted) return
     const o = this.ctx.createOscillator()
