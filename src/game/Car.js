@@ -276,6 +276,8 @@ export class Car {
 
     this.maxSteer = 0.55
     this.maxForce = 3600
+    this.topSpeedKmh = opts.topSpeedKmh || 145
+    this.highSpeedBoost = opts.highSpeedBoost || 0
     this.brakeForce = 52
     this._steerCurrent = 0
     this.gear = 'D'
@@ -475,13 +477,13 @@ export class Car {
     this.speedKmh = Math.abs(speed) * 3.6
     if (!Number.isFinite(this.speedKmh)) this.speedKmh = 0
     this.signedSpeedKmh = speed * 3.6
-    // Soft speed cap ~170 km/h — prevents barrier launches at absurd speeds
-    if (this.speedKmh > 145) {
-      const scale = 145 / this.speedKmh
+    // Soft speed cap (player 195 km/h, rivals keep 145) — prevents barrier launches at absurd speeds
+    if (this.speedKmh > this.topSpeedKmh) {
+      const scale = this.topSpeedKmh / this.speedKmh
       velocity.scale(scale, velocity)
     }
 
-    const speedFactor = Math.min(1, this.speedKmh / 150)
+    const speedFactor = Math.min(1, this.speedKmh / 150) + Math.max(0, Math.min(0.25, (this.speedKmh - 150) / 180))
     const targetSteer = controls.steer * this.maxSteer * (1 - speedFactor * 0.65)
     const steerLerp = Math.min(1, dt * 9)
     this._steerCurrent += (targetSteer - this._steerCurrent) * steerLerp
@@ -502,7 +504,9 @@ export class Car {
     this.gear = wantReverse ? 'R' : 'D'
 
     if (controls.throttle && !wantReverse) {
-      const force = this.maxForce * (controls.handbrake ? 0.55 : 1)
+      // Extra pull above 100 km/h so the player can reach its higher top speed (rivals: highSpeedBoost 0)
+      const hi = Math.max(0, Math.min(1, (this.speedKmh - 100) / 60))
+      const force = this.maxForce * (1 + this.highSpeedBoost * hi) * (controls.handbrake ? 0.55 : 1)
       // Negative engine force = forward (indexForwardAxis = 2)
       this.vehicle.applyEngineForce(-force, 2)
       this.vehicle.applyEngineForce(-force, 3)

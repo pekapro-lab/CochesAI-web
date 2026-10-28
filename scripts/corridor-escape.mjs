@@ -85,7 +85,7 @@ for (const id of tracks) {
     for (let i = 0; i < N; i += STRIDE)
       for (const side of [1, -1])
         for (const ang of [0.35, 0.8, 1.3])
-          for (const [speed, dtF, jerk] of [[34 / 3.6, 1 / 60, false], [80 / 3.6, 1 / 60, true], [140 / 3.6, 1 / 20, false]])
+          for (const [speed, dtF, jerk] of [[34 / 3.6, 1 / 60, false], [80 / 3.6, 1 / 60, true], [140 / 3.6, 1 / 20, false], [195 / 3.6, 1 / 30, false]])
             probe(i, side, ang, speed, dtF, jerk)
     return { id, N, LIMIT: +LIMIT.toFixed(2), probes, escapes: escapes.length, sample: escapes.slice(0, 8) }
   }, [id, STRIDE])

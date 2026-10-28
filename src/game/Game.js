@@ -496,6 +496,8 @@ export class Game {
 
   _guardPhysics(dt, controls) {
     if (!this.car) return
+    // Containment first, even for a flipped car (a high-speed wall hit can flip it outside)
+    if (!this.car.hasBadState()) this._containCar(this.car.chassisBody)
     if (this.car.hasBadState() || this.car.isOverturned()) {
       this.recoverCar()
       return

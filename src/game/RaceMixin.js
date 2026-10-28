@@ -4,6 +4,10 @@ import { Racer, standings, guardBot, nearestIndex } from './ai/Racer.js'
 import { AIDriver, PERSONALITIES } from './ai/AIDriver.js'
 import { buildRacingLine } from './ai/RacingLine.js'
 
+// Player top speed (HUD km/h). Rivals keep Car's default 145 km/h and no boost.
+export const PLAYER_TOP_SPEED_KMH = 195
+export const PLAYER_HIGH_SPEED_BOOST = 0.6
+
 const PLAYER_COLORS = [0xe8231e, 0x2f7bff, 0x33c46a, 0xffc21a, 0xb06cff, 0xff7a1a]
 const INTERP_DELAY = 120 // ms
 
@@ -72,7 +76,7 @@ export const RaceMixin = {
       const mine = g.id === myId
       const kind = mine ? 'local' : g.kind === 'bot' ? (this.isHost ? 'bot' : 'remote') : 'remote'
       const r = new Racer({ id: g.id, name: g.name, kind, color: g.color, personality: g.personality })
-      const car = new Car(this.world, this.scene, this._slotSpawn(k), { color: g.color, lite: !mine, collideCars: false })
+      const car = new Car(this.world, this.scene, this._slotSpawn(k), { color: g.color, lite: !mine, collideCars: false, ...(mine ? { topSpeedKmh: PLAYER_TOP_SPEED_KMH, highSpeedBoost: PLAYER_HIGH_SPEED_BOOST } : {}) })
       car.setTimeOfDay(this.timeOfDay)
       if (mine) { car.chassisBody.material = this._chassisMat; this.car = car; this.me = r } else car.chassisBody.material = this._chassisMat
       if (kind === 'remote') car.makeRemote()

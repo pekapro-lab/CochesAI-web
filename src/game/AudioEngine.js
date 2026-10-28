@@ -76,10 +76,10 @@ export class AudioEngine {
 
   /** Simulated rpm from speed with a 6-speed gearbox (sound only; physics is untouched). */
   _rpmFor(speedKmh, throttle) {
-    const gears = [0, 32, 60, 90, 120, 150, 999]
+    const gears = [0, 32, 62, 96, 132, 168, 999]
     let g = 0
     while (g < gears.length - 2 && speedKmh > gears[g + 1]) g++
-    const lo = gears[g], hi = Math.min(gears[g + 1], 175)
+    const lo = gears[g], hi = Math.min(gears[g + 1], 205)
     const t = Math.max(0, Math.min(1, (speedKmh - lo) / (hi - lo)))
     const base = g === 0 ? 900 + t * 5200 : 3300 + t * 3000
     return Math.max(850, base + throttle * 400 * (speedKmh < 5 ? 2.5 : 1))
@@ -101,7 +101,7 @@ export class AudioEngine {
     e.nbp.frequency.setTargetAtTime(f * 3.5, t, 0.08)
     e.ngain.gain.setTargetAtTime(0.06 + throttle * 0.16, t, 0.08)
     e.filter.frequency.setTargetAtTime(220 + f * 3.2 + throttle * 650, t, 0.08)
-    const vol = 0.05 + Math.min(speedKmh / 180, 1) * 0.1 + throttle * 0.07 + brake * 0.01
+    const vol = 0.05 + Math.min(speedKmh / 200, 1) * 0.1 + throttle * 0.07 + brake * 0.01
     e.gain.gain.setTargetAtTime(vol, t, 0.06)
   }
 
