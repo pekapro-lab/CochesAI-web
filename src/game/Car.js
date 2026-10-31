@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import * as CANNON from 'cannon-es'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { buildCarMesh, buildWheel as buildWheelV2, defaultConfig, MODEL_BY_ID, SPOILERS } from './CarModels.js'
 
 function canvasTex(w, h, draw, repeat = 1) {
   const c = document.createElement('canvas')
@@ -123,6 +124,10 @@ const GROUP_CHASSIS = 4
 export class Car {
   constructor(world, scene, spawn, opts = {}) {
     this.opts = opts
+    this.cfg = opts.config || defaultConfig('rayo')
+    this.model = MODEL_BY_ID[this.cfg.model] || MODEL_BY_ID.rayo
+    this.downforce = (SPOILERS.find((x) => x.id === this.cfg.spoiler) || SPOILERS[0]).down
+    this.assist = opts.assist !== false
     this.world = world
     this.scene = scene
     this.scannerPhase = 0
@@ -130,7 +135,7 @@ export class Car {
     this._night = true
     this._spawn = { ...spawn }
 
-    const mass = 980
+    const mass = this.model.stats.mass
     // Flat box kept above the ground so wheel rays own the ground contact.
     // Physics box sits high so it does NOT rest on the ground during normal driving
     // (that used to sink the car to y≈0.09 and kill wheel rays). It only acts as a
@@ -162,7 +167,7 @@ export class Car {
     const wheelOptions = {
       radius: 0.38,
       directionLocal: new CANNON.Vec3(0, -1, 0),
-      suspensionStiffness: 42,
+      suspensionStiffness: this.model.stats.susp,
       suspensionRestLength: 0.32,
       frictionSlip: 2.6,
       dampingRelaxation: 2.5,
@@ -189,11 +194,7 @@ export class Car {
 
     for (let i = 0; i < 4; i++) {
       const opts = { ...wheelOptions, chassisConnectionPointLocal: positions[i] }
-      if (i < 2) {
-        opts.frictionSlip = 2.9
-      } else {
-        opts.frictionSlip = 2.4
-      }
+      opts.frictionSlip = (i < 2 ? 2.9 : 2.4) * this.model.stats.grip
       this.vehicle.addWheel(opts)
     }
     this.vehicle.addToWorld(world)
@@ -259,8 +260,10 @@ export class Car {
       return depth
     }
 
-    this.mesh = this._buildMesh()
-    if (opts.color != null) this.bodyMat.color.set(opts.color)
+    const built = buildCarMesh(this.cfg, { seed: opts.seed || 0 })
+    Object.assign(this, { bodyMat: built.bodyMat, hoodMesh: built.hood, headLightMeshes: built.headLightMeshes, scannerLeds: built.scannerLeds, scannerGroup: built.scannerGroup, headLightL: built.headLightL, headLightR: built.headLightR, scannerLight: built.scannerLight })
+    this.mesh = built.root
+    for (const o of this.mesh.children) if (o.isMesh) o.receiveShadow = false
     if (opts.lite) {
       // Rivals: no real lights (one spot/point light per car is too expensive on phones)
       for (const l of [this.headLightL, this.headLightR, this.scannerLight]) l.visible = false
@@ -269,19 +272,23 @@ export class Car {
 
     this.wheelMeshes = []
     for (let i = 0; i < 4; i++) {
-      const m = buildWheel(i % 2 === 0 ? 1 : -1)
+      const m = buildWheelV2(this.cfg)
       scene.add(m)
       this.wheelMeshes.push(m)
     }
 
     this.maxSteer = 0.55
-    this.maxForce = 3600
+    this.maxForce = 3600 * this.model.stats.accel
     this.topSpeedKmh = opts.topSpeedKmh || 145
     this.highSpeedBoost = opts.highSpeedBoost || 0
     this.brakeForce = 52
     this._steerCurrent = 0
     this.gear = 'D'
     this.signedSpeedKmh = 0
+    this._baseSlip = [0, 1, 2, 3].map((i) => this.vehicle.wheelInfos[i].frictionSlip)
+    this._prevSpeed = 0
+    this.slip = 0 // 0..1 rear sliding amount (tyre squeal / HUD)
+    this.longAcc = 0
   }
 
   _buildMesh() {
@@ -506,7 +513,7 @@ export class Car {
     if (controls.throttle && !wantReverse) {
       // Extra pull above 100 km/h so the player can reach its higher top speed (rivals: highSpeedBoost 0)
       const hi = Math.max(0, Math.min(1, (this.speedKmh - 100) / 60))
-      const force = this.maxForce * (1 + this.highSpeedBoost * hi) * (controls.handbrake ? 0.55 : 1)
+      const force = this.maxForce * (1 + this.highSpeedBoost * hi) * (controls.handbrake ? 0.55 : 1) * Math.min(1, Number(controls.throttle) || 0)
       // Negative engine force = forward (indexForwardAxis = 2)
       this.vehicle.applyEngineForce(-force, 2)
       this.vehicle.applyEngineForce(-force, 3)
@@ -536,7 +543,7 @@ export class Car {
         }
       }
     } else if (wantBrake) {
-      for (let i = 0; i < 4; i++) this.vehicle.setBrake(this.brakeForce, i)
+      for (let i = 0; i < 4; i++) this.vehicle.setBrake(this.brakeForce * Math.min(1, Math.max(0.25, Number(controls.brake) || 0)) * (i < 2 ? 1.15 : 0.85), i)
     }
 
     // Mild launch assist from standstill so a recover never leaves the player at 0
@@ -550,16 +557,40 @@ export class Car {
       }
     }
 
+    // --- v2 handling: weight transfer, downforce, drift & steering assist ---
+    const acc = (speed - this._prevSpeed) / Math.max(1e-3, dt)
+    this._prevSpeed = speed
+    this.longAcc += (Math.max(-25, Math.min(25, acc)) - this.longAcc) * Math.min(1, dt * 6)
+    // braking (acc<0) loads the front axle, accelerating loads the rear
+    const wt = Math.max(-0.18, Math.min(0.18, -this.longAcc / 9.81 * 0.22))
+    const right = new CANNON.Vec3()
+    this.chassisBody.vectorToWorldFrame(new CANNON.Vec3(1, 0, 0), right)
+    const lat = velocity.dot(right)
+    const slipAngle = Math.abs(speed) > 3 ? Math.atan2(Math.abs(lat), Math.abs(speed)) : 0
+    this.slip += (Math.min(1, slipAngle / 0.35) - this.slip) * Math.min(1, dt * 8)
+    const drift = this.model.stats.drift
+    for (let i = 0; i < 4; i++) {
+      let f = this._baseSlip[i] * (i < 2 ? 1 + wt : 1 - wt)
+      if (i >= 2 && controls.handbrake) f = 1.1 / drift
+      this.vehicle.wheelInfos[i].frictionSlip = f
+    }
     if (controls.handbrake) {
       this.vehicle.setBrake(28, 2)
       this.vehicle.setBrake(28, 3)
-      for (let i = 2; i < 4; i++) {
-        this.vehicle.wheelInfos[i].frictionSlip = 1.1
-      }
-    } else {
-      for (let i = 2; i < 4; i++) {
-        this.vehicle.wheelInfos[i].frictionSlip = 2.4
-      }
+    }
+    // aero downforce (spoiler) — more grip at speed, only with wheels on the ground
+    const vms = Math.abs(speed)
+    if (this.wheelsOnGround() >= 2 && vms > 15) {
+      const down = (0.6 + this.downforce * 1.4) * vms * vms * 0.9
+      this.chassisBody.applyForce(new CANNON.Vec3(-up.x * down, -up.y * down, -up.z * down))
+      // mild grip bonus from the wing
+      for (let i = 0; i < 4; i++) this.vehicle.wheelInfos[i].frictionSlip *= 1 + this.downforce * 0.06 * Math.min(1, vms / 40)
+    }
+    // steering assist: damp runaway yaw when sliding and the driver isn't asking for it
+    if (this.assist && !controls.handbrake && vms > 8 && this.slip > 0.25) {
+      const av = this.chassisBody.angularVelocity
+      const k = Math.min(1, dt * 3.5) * (this.slip - 0.25)
+      av.y -= av.y * k
     }
 
     this.mesh.position.copy(this.chassisBody.position)

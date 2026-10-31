@@ -37,6 +37,7 @@ export class UI {
               <button class="tod-btn" type="button" data-diff="dificil">Difícil</button>
             </div>
           </div>
+          <button class="btn primary garage-btn" id="btn-garage" type="button">🔧 Garaje · elige y tunea tu coche</button>
           <div class="section-title">Carrera rápida</div>
           <div class="track-list" id="track-list"></div>
           <div class="section-title">Multijugador</div>
@@ -54,7 +55,7 @@ export class UI {
             <button class="btn" id="btn-mute-menu" type="button">Sonido</button>
           </div>
           <p class="help">
-            Teclado: WASD / flechas · S/↓ freno o marcha atrás (parado) · Espacio freno de mano · C cámara · R recolocar · P/Esc pausa<br/>
+            Mando: stick izq. dirección · RT acelera · LT frena · B freno de mano · Y cámara · Start pausa<br/>Teclado: WASD / flechas · S/↓ freno o marcha atrás (parado) · Espacio freno de mano · C cámara · R recolocar · P/Esc pausa<br/>
             Móvil: ▲ acelera · ▼ frena / marcha atrás · ↺ recoloca · ⟳ reinicia
           </p>
         </div>
@@ -173,6 +174,7 @@ export class UI {
     })
     this.el.querySelector('#btn-restart').addEventListener('click', () => this.onRestartRace?.())
     this.el.querySelector('#btn-restart-hud').addEventListener('click', () => this.onRestartRace?.())
+    this.el.querySelector('#btn-garage').addEventListener('click', () => this.onGarage?.())
     this.el.querySelector('#btn-day').addEventListener('click', () => this.onTimeOfDay?.('day'))
     this.el.querySelector('#btn-night').addEventListener('click', () => this.onTimeOfDay?.('night'))
 
