@@ -117,6 +117,8 @@ const chassisW = 1.85
 const chassisH = 0.42
 const chassisL = 4.15
 
+// v2 beta.3: rivals 185 km/h (was 145) so the player (195) only has a 10 km/h edge
+export const RIVAL_TOP_SPEED_KMH = 185
 const GROUP_GROUND = 1
 const GROUP_BARRIER = 2
 const GROUP_CHASSIS = 4
@@ -281,7 +283,7 @@ export class Car {
 
     this.maxSteer = 0.55
     this.maxForce = 3600 * this.model.stats.accel
-    this.topSpeedKmh = opts.topSpeedKmh || 145
+    this.topSpeedKmh = opts.topSpeedKmh || RIVAL_TOP_SPEED_KMH
     this.highSpeedBoost = opts.highSpeedBoost || 0
     this.brakeForce = 52
     this._steerCurrent = 0

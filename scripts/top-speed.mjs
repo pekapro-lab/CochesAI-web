@@ -1,7 +1,7 @@
 /**
  * Top-speed check: on each track the player car is driven flat-out for 40 s with a naive centreline
  * follower (never brakes). It must reach ≥185 km/h somewhere (cap 195), never exceed ~197, and stay
- * inside the wall corridor (|lateral| < roadWidth/2 + 2, on the ground). A rival-config car keeps 145.
+ * inside the wall corridor (|lateral| < roadWidth/2 + 2, on the ground). A rival-config car is capped at 185 (beta.3: gap 10 km/h).
  */
 import { chromium } from 'playwright'
 import { createServer } from 'http'
@@ -43,7 +43,7 @@ for (const id of (process.env.TRACKS || 'norte,bosque,costa,sierra').split(','))
     }
     const car = g.car, b = car.chassisBody
     const others = g.racers.filter((x) => x.car !== car).map((x) => x.car.topSpeedKmh)
-    const C = car.constructor, probe = new C(g.world, g.scene, { x: 0, y: -50, z: 0, yaw: 0 }, { lite: true, collideCars: false }); others.push(probe.topSpeedKmh, probe.highSpeedBoost + 145)
+    const C = car.constructor, probe = new C(g.world, g.scene, { x: 0, y: -50, z: 0, yaw: 0 }, { lite: true, collideCars: false }); others.push(probe.topSpeedKmh, probe.highSpeedBoost + 185)
     car.teleport(P[best].x, (P[best].y || 0) + 0.8, P[best].z, head(best))
     let maxKmh = 0, maxLat = 0, idx = best
     for (let i = 0; i < 60 * 40; i++) {
@@ -64,7 +64,7 @@ for (const id of (process.env.TRACKS || 'norte,bosque,costa,sierra').split(','))
     const y = +b.position.y.toFixed(2)
     return { id, y, straightM: Math.round(bestLen), maxKmh: Math.round(maxKmh), maxLat: +maxLat.toFixed(2), halfRoad: W / 2, rivalCaps: [...new Set(others)] }
   }, id)
-  const ok = r.maxLat < r.halfRoad + 2 && r.y > -2 && r.y < 6 && r.maxKmh <= 197 && r.rivalCaps.every((c) => c === 145)
+  const ok = r.maxLat < r.halfRoad + 2 && r.y > -2 && r.y < 6 && r.maxKmh <= 197 && r.rivalCaps.every((c) => c === 185)
   results.push(r)
   console.log(ok ? 'OK  ' : 'FAIL', JSON.stringify(r))
   if (!ok) fail = true
