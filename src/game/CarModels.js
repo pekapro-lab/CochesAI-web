@@ -391,7 +391,7 @@ export function buildCarMesh(cfg, { seed = 0 } = {}) {
   const cabin = add(new THREE.Mesh(cabGeo, plainMat)); cabin.position.set(0, top + d.cabH / 2 - 0.02, d.cabZ)
   const cy = top + d.cabH * 0.55
   const ws = add(new THREE.Mesh(new RoundedBoxGeometry(d.cabW * 0.88, d.cabH * 0.9, 0.06, 2, 0.03), glassMat), false)
-  ws.position.set(0, cy, d.cabZ + d.cabL / 2 + 0.02); ws.rotation.x = d.boxy ? -0.45 : -0.65
+  ws.userData.windshield = true; ws.position.set(0, cy, d.cabZ + d.cabL / 2 + 0.02); ws.rotation.x = d.boxy ? -0.45 : -0.65
   const rg = add(new THREE.Mesh(new RoundedBoxGeometry(d.cabW * 0.8, d.cabH * 0.75, 0.06, 2, 0.03), glassMat), false)
   rg.position.set(0, cy, d.cabZ - d.cabL / 2 - 0.02); rg.rotation.x = d.hatch ? 0.25 : 0.6
   for (const x of [-1, 1]) {
@@ -529,6 +529,7 @@ function buildMuscle(d, { bodyMat, trimMat, glassMat, chromeMat, add }) {
   const body = add(new THREE.Mesh(geo, bodyMat)); body.position.y = 0.02
   // glass: windscreen, rear fastback glass, side windows
   const ws = add(new THREE.Mesh(new THREE.PlaneGeometry(1.36, 0.62), glassMat), false)
+  ws.userData.windshield = true
   ws.position.set(0, 0.74 + 0.05 * Math.cos(0.73), 0.36 + 0.05 * Math.sin(0.73))
   ws.lookAt(ws.position.x, ws.position.y + Math.cos(0.73), ws.position.z + Math.sin(0.73)); ws.scale.set(0.85, 1, 1)
   const rg = add(new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.92), glassMat), false)

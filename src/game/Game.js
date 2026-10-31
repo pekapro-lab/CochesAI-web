@@ -690,6 +690,7 @@ export class Game {
       // Hood view: on the hood looking forward, hood/scanner visible at bottom
       const hoodPos = new THREE.Vector3(0, 0.55, 0.85).applyQuaternion(q).add(pos)
       const look = hoodPos.clone().add(forward.clone().multiplyScalar(18)).add(up.clone().multiplyScalar(0.2))
+      this._hideWindshield(true)
       this.camera.position.lerp(hoodPos, 0.35)
       this.camera.up.copy(up)
       this.camera.lookAt(look)
@@ -698,6 +699,7 @@ export class Game {
       const back = forward.clone().multiplyScalar(-8).add(up.clone().multiplyScalar(3.2))
       const chasePos = new THREE.Vector3(pos.x, pos.y, pos.z).add(back)
       const look = new THREE.Vector3(pos.x, pos.y + 0.8, pos.z).add(forward.clone().multiplyScalar(6))
+      this._hideWindshield(false)
       this.camera.position.lerp(chasePos, 0.12)
       this.camera.up.set(0, 1, 0)
       this.camera.lookAt(look)
@@ -712,6 +714,13 @@ export class Game {
       this.sun.position.set(p.x + 70, 110, p.z + 45)
       this.sun.target.updateMatrixWorld()
     }
+  }
+
+  /** Hood cam: the camera sits inside the cabin, so hide our own windscreen (no tinted overlay). */
+  _hideWindshield(hide) {
+    if (!this.car || this._wsHidden === hide && this._wsCar === this.car) return
+    this._wsHidden = hide; this._wsCar = this.car
+    this.car.mesh.traverse((o) => { if (o.userData.windshield) o.visible = !hide })
   }
 
   _onResize = () => {
