@@ -443,3 +443,28 @@ canvas.game-canvas {
 .standings li.me { color: #ffcf33; font-weight: 700; }
 @media (max-width: 600px) { .standings { top: 64px; font-size: 11px; } .room-code { font-size: 34px; } }
 .menu-card { max-height: 94vh; overflow-y: auto; }
+
+/* ---------- v2 garage ---------- */
+.garage-btn { width: 100%; margin: 6px 0 4px; }
+.garage { position: absolute; inset: 0; pointer-events: none; z-index: 30; }
+.garage.hidden { display: none; }
+.garage-top { position: absolute; left: 12px; top: 10px; display: flex; gap: 8px; align-items: center; pointer-events: auto; flex-wrap: wrap; }
+.logo.small { font-size: 26px; margin: 0 8px 0 0; }
+.garage-panel { position: absolute; right: 10px; top: 10px; bottom: 10px; width: min(380px, 40vw); overflow-y: auto; pointer-events: auto; padding: 12px 14px; -webkit-overflow-scrolling: touch; }
+.gsec { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: .7; margin: 10px 0 5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { background: rgba(255,255,255,.07); color: #eef; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; padding: 6px 10px; font-size: 13px; cursor: pointer; }
+.chip.active { background: #e8231e; border-color: #ff6a5a; color: #fff; }
+.chip.model { font-weight: 700; }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 6px; align-items: center; }
+.sw { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); cursor: pointer; padding: 0; }
+.sw.active { border-color: #fff; box-shadow: 0 0 0 2px #e8231e; }
+#gar-paint { width: 34px; height: 28px; border: none; background: none; padding: 0; }
+.gdesc { font-size: 13px; opacity: .85; margin: 6px 0; }
+.gstat { display: flex; align-items: center; gap: 8px; font-size: 12px; margin: 2px 0; }
+.gstat span { width: 86px; opacity: .8; }
+.gstat i { flex: 1; height: 6px; background: rgba(255,255,255,.1); border-radius: 3px; overflow: hidden; }
+.gstat b { display: block; height: 100%; background: linear-gradient(90deg,#ff7a1a,#e8231e); }
+#gar-num { width: 70px; }
+.gassist { font-size: 13px; display: flex; gap: 6px; align-items: center; }
+@media (orientation: portrait) { .garage-panel { left: 8px; right: 8px; top: auto; width: auto; height: 52vh; } }

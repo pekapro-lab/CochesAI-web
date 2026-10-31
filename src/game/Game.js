@@ -8,6 +8,8 @@ import { AudioEngine } from './AudioEngine.js'
 import { Environment } from './Environment.js'
 import { formatTime } from './format.js'
 import { RaceMixin } from './RaceMixin.js'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { Garage } from './Garage.js'
 
 
 function bestKey(trackId) {
@@ -94,6 +96,13 @@ export class Game {
     this.scene.add(this.ambient)
 
     this.env = new Environment(this.scene)
+    // v2: environment reflections for metallic paint / clearcoat (PMREM of a procedural room)
+    const pmrem = new THREE.PMREMGenerator(this.renderer)
+    this.envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+    pmrem.dispose()
+    this.scene.environment = this.envMap
+    this.scene.environmentIntensity = 0.4
+    this.garage = new Garage(this)
     // Wider shadow camera so day shadows look good on track
     const sm = this.isIOS ? 1024 : 2048
     this.sun.shadow.mapSize.set(sm, sm)
@@ -122,6 +131,7 @@ export class Game {
       await this.audio.ensure()
       this.startTrack(trackId, opts)
     }
+    this.ui.onGarage = () => this.garage.show()
     this.ui.onResume = () => this.resume()
     this.ui.onExitToMenu = () => this.exitToMenu()
     this.ui.onToggleCamera = () => this.input.onToggleCamera()
@@ -254,6 +264,8 @@ export class Game {
       this.ambient.intensity = 0.55
       this.ambient.color.set(0xffffff)
       this.renderer.toneMappingExposure = 1.15
+      this.scene.environment = this.envMap
+      this.scene.environmentIntensity = 0.9
     } else {
       this.scene.background = new THREE.Color(0x03050a)
       this.scene.fog = new THREE.FogExp2(0x070a16, 0.008)
@@ -267,6 +279,8 @@ export class Game {
       this.ambient.intensity = 0.6
       this.ambient.color.set(0x24304e)
       this.renderer.toneMappingExposure = 1.25
+      this.scene.environment = this.envMap
+      this.scene.environmentIntensity = 0.3
     }
   }
 
@@ -394,6 +408,7 @@ export class Game {
           speedKmh: this.car.speedKmh,
           throttle: controls.throttle,
           brake: controls.brake,
+          slip: this.car.slip || 0,
         })
         this._raceAfterStep(dt)
         this.lap = Math.max(1, Math.min(this.totalLaps, this.me.lap))
@@ -675,6 +690,7 @@ export class Game {
       // Hood view: on the hood looking forward, hood/scanner visible at bottom
       const hoodPos = new THREE.Vector3(0, 0.55, 0.85).applyQuaternion(q).add(pos)
       const look = hoodPos.clone().add(forward.clone().multiplyScalar(18)).add(up.clone().multiplyScalar(0.2))
+      this._hideWindshield(true)
       this.camera.position.lerp(hoodPos, 0.35)
       this.camera.up.copy(up)
       this.camera.lookAt(look)
@@ -683,6 +699,7 @@ export class Game {
       const back = forward.clone().multiplyScalar(-8).add(up.clone().multiplyScalar(3.2))
       const chasePos = new THREE.Vector3(pos.x, pos.y, pos.z).add(back)
       const look = new THREE.Vector3(pos.x, pos.y + 0.8, pos.z).add(forward.clone().multiplyScalar(6))
+      this._hideWindshield(false)
       this.camera.position.lerp(chasePos, 0.12)
       this.camera.up.set(0, 1, 0)
       this.camera.lookAt(look)
@@ -697,6 +714,13 @@ export class Game {
       this.sun.position.set(p.x + 70, 110, p.z + 45)
       this.sun.target.updateMatrixWorld()
     }
+  }
+
+  /** Hood cam: the camera sits inside the cabin, so hide our own windscreen (no tinted overlay). */
+  _hideWindshield(hide) {
+    if (!this.car || this._wsHidden === hide && this._wsCar === this.car) return
+    this._wsHidden = hide; this._wsCar = this.car
+    this.car.mesh.traverse((o) => { if (o.userData.windshield) o.visible = !hide })
   }
 
   _onResize = () => {

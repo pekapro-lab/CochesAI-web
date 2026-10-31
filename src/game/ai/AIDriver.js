@@ -29,7 +29,7 @@ export class AIDriver {
     this.p = personality
     this.skill = (DIFFICULTY[difficulty] || DIFFICULTY.normal).skill
     const grip = this.skill * personality.pace
-    this.vProf = speedProfile(rl, { aLat: AIDriver.A_LAT * grip, aBrake: AIDriver.A_BRAKE * personality.brakeLate * this.skill, vTop: 40 * grip })
+    this.vProf = speedProfile(rl, { aLat: AIDriver.A_LAT * grip, aBrake: AIDriver.A_BRAKE * personality.brakeLate * this.skill, vTop: 51 * grip })
     this.ctl = { throttle: 0, brake: 0, steer: 0, handbrake: false }
     this.phase = seed * 1.7
     this.sideOff = 0 // current avoidance offset (m)

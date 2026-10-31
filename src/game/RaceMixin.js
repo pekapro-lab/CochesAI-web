@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { Car } from './Car.js'
+import { loadGarage, botConfig } from './CarModels.js'
 import { Racer, standings, guardBot, nearestIndex } from './ai/Racer.js'
 import { AIDriver, PERSONALITIES } from './ai/AIDriver.js'
 import { buildRacingLine } from './ai/RacingLine.js'
@@ -76,9 +77,10 @@ export const RaceMixin = {
       const mine = g.id === myId
       const kind = mine ? 'local' : g.kind === 'bot' ? (this.isHost ? 'bot' : 'remote') : 'remote'
       const r = new Racer({ id: g.id, name: g.name, kind, color: g.color, personality: g.personality })
-      const car = new Car(this.world, this.scene, this._slotSpawn(k), { color: g.color, lite: !mine, collideCars: false, ...(mine ? { topSpeedKmh: PLAYER_TOP_SPEED_KMH, highSpeedBoost: PLAYER_HIGH_SPEED_BOOST } : {}) })
+      const config = mine ? (this.garageConfig || loadGarage()) : (g.config || botConfig(k, g.color))
+      const car = new Car(this.world, this.scene, this._slotSpawn(k), { config, seed: k, assist: mine ? config.assist !== false : true, color: g.color, lite: !mine, collideCars: false, ...(mine ? { topSpeedKmh: PLAYER_TOP_SPEED_KMH, highSpeedBoost: PLAYER_HIGH_SPEED_BOOST } : {}) })
       car.setTimeOfDay(this.timeOfDay)
-      if (mine) { car.chassisBody.material = this._chassisMat; this.car = car; this.me = r } else car.chassisBody.material = this._chassisMat
+      if (mine) { car.chassisBody.material = this._chassisMat; this.car = car; this.me = r; this.audio?.setProfile?.(car.model.sound) } else car.chassisBody.material = this._chassisMat
       if (kind === 'remote') car.makeRemote()
       r.car = car
       r.buf = []
