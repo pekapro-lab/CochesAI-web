@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { asphaltTexture, grassTexture, gravelTexture, kerbTexture, addForest, addBillboards } from './Scenery.js'
 import * as CANNON from 'cannon-es'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
@@ -105,7 +106,8 @@ export function buildTrack(world, scene, def) {
     roadColor = lightenHex(roadColor, 0.22)
   }
   const groundMat = new THREE.MeshStandardMaterial({
-    color: groundColor,
+    color: ['night-city', 'coast', 'mountain'].includes(def.theme) ? groundColor : 0xffffff,
+    map: ['night-city', 'coast', 'mountain'].includes(def.theme) ? null : grassTexture(isDay),
     roughness: 0.95,
     metalness: 0.05,
   })
@@ -122,6 +124,7 @@ export function buildTrack(world, scene, def) {
   const leftEdge = []
   const rightEdge = []
   const centerline = []
+  let _vAcc = 0
 
   for (let i = 0; i < path.length; i++) {
     const a = path[i]
@@ -136,11 +139,12 @@ export function buildTrack(world, scene, def) {
     rightEdge.push(R)
     centerline.push(a.clone())
 
-    const u = i / path.length
+    if (i > 0) _vAcc += path[i].distanceTo(path[i - 1]) / 8
+    const u = Math.round(_vAcc * 1000) / 1000
     const base = i * 2
     positions.push(L.x, L.y, L.z, R.x, R.y, R.z)
     normals.push(0, 1, 0, 0, 1, 0)
-    uvs.push(0, u * 40, 1, u * 40)
+    uvs.push(0, u, 1, u)
 
     const i2 = ((i + 1) % path.length) * 2
     indices.push(base, i2, base + 1, base + 1, i2, i2 + 1)
@@ -154,7 +158,8 @@ export function buildTrack(world, scene, def) {
   roadGeo.computeVertexNormals()
 
   const roadMat = new THREE.MeshStandardMaterial({
-    color: roadColor,
+    color: 0xffffff,
+    map: asphaltTexture(isDay),
     roughness: 0.85,
     metalness: 0.1,
   })
@@ -164,7 +169,8 @@ export function buildTrack(world, scene, def) {
 
   // Soft shoulder / runoff tint beside road (visual only)
   const shoulderMat = new THREE.MeshStandardMaterial({
-    color: def.shoulderColor || 0x2a2e28,
+    color: 0xffffff,
+    map: gravelTexture(isDay),
     roughness: 0.95,
     metalness: 0.02,
   })
@@ -188,7 +194,7 @@ export function buildTrack(world, scene, def) {
 
   // Center dashed line
   const lineMat = new THREE.MeshBasicMaterial({ color: 0xd8dce8 })
-  for (let i = 0; i < path.length; i += 3) {
+  for (let i = 0; i < 0; i += 3) { // v2: centre dash now baked into the asphalt texture
     const a = path[i]
     const b = path[(i + 1) % path.length]
     const dir = new THREE.Vector3().subVectors(b, a).normalize()
@@ -199,8 +205,8 @@ export function buildTrack(world, scene, def) {
   }
 
   // Curbs + barriers
-  const curbMatL = new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.7 })
-  const curbMatR = new THREE.MeshStandardMaterial({ color: 0xc41e1e, roughness: 0.7 })
+  const curbMatL = new THREE.MeshStandardMaterial({ map: kerbTexture(), roughness: 0.6 })
+  const curbMatR = curbMatL
   const barrierMat = new THREE.MeshStandardMaterial({
     color: def.barrierColor || 0x8a909c,
     metalness: 0.55,
@@ -335,6 +341,9 @@ export function buildTrack(world, scene, def) {
   // Performance (mobile/WebKit): merge all static meshes per material -> a few dozen draw calls
   // instead of ~1-2k meshes. Visual result is identical.
   const merged = mergeStatic(group)
+  // v2 dressing (instanced / unmerged, placed with their own clearance checks)
+  const treeCount = def.theme === 'night-city' ? 0 : addForest(group, path, half, distToPath, { day: isDay, density: def.theme === 'coast' ? 0.4 : def.theme === 'mountain' ? 0.7 : 1 })
+  const billboards = addBillboards(group, path, half, distToPath, { night: !isDay, count: 11 })
 
   scene.add(group)
 
@@ -360,6 +369,8 @@ export function buildTrack(world, scene, def) {
     lamps,
     merged,
     sceneryFixed,
+    treeCount,
+    billboards,
     dispose() {
       scene.remove(group)
       for (const b of bodies) world.removeBody(b)

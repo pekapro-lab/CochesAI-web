@@ -74,5 +74,33 @@ await page.waitForFunction(() => window.__COCHES__.state === 'racing', null, { t
 await page.evaluate(() => { window.__COCHES__.cameraMode = 'chase' })
 await page.keyboard.down('ArrowUp'); await page.waitForTimeout(3500); await page.keyboard.up('ArrowUp')
 await page.screenshot({ path: join(OUT, '07-carrera-noche.png') })
+// scenery overview per track (day + one night)
+const scen = []
+for (const [i, tod] of [[1, 'day'], [2, 'day'], [3, 'day'], [4, 'day'], [2, 'night']]) {
+  await page.evaluate((tod) => { const g = window.__COCHES__; g.exitToMenu(); g.timeOfDay = tod }, tod)
+  await page.click(`.track-btn:nth-child(${i})`)
+  await page.waitForTimeout(1500)
+  const r = await page.evaluate(() => {
+    const g = window.__COCHES__; cancelAnimationFrame(g._raf); g._raf = 0
+    const P = g.track.path, k = Math.floor(P.length * 0.3), a = P[k], b = P[(k + 6) % P.length]
+    g.camera.position.set(a.x, 3.5, a.z); g.camera.lookAt(b.x, 1.5, b.z); g.camera.fov = 65; g.camera.updateProjectionMatrix()
+    g.renderer.render(g.scene, g.camera)
+    return { id: g.track.id, trees: g.track.treeCount, boards: g.track.billboards, calls: g.renderer.info.render.calls }
+  })
+  await page.waitForTimeout(600)
+  await page.evaluate(() => { const g = window.__COCHES__; g.renderer.render(g.scene, g.camera) })
+  await page.screenshot({ path: join(OUT, `10-pista-${r.id}-${tod}.png`) }); scen.push(r)
+  // billboard close-up
+  await page.evaluate(() => {
+    const g = window.__COCHES__
+    const bb = g.track.group.children.filter((c) => c.isGroup && c.userData.noMerge)
+    const b = bb[1] || bb[0]; if (!b) return
+    const f = new (g.camera.position.constructor)(0, 0, 1).applyQuaternion(b.quaternion)
+    g.camera.position.set(b.position.x + f.x * 14, 4.5, b.position.z + f.z * 14); g.camera.lookAt(b.position.x, 4.5, b.position.z)
+    g.renderer.render(g.scene, g.camera)
+  })
+  await page.screenshot({ path: join(OUT, `11-cartel-${r.id}-${tod}.png`) })
+}
+console.log(JSON.stringify(scen))
 console.log(JSON.stringify({ saved: JSON.parse(saved), info, errors }, null, 1))
 await browser.close(); server.close()

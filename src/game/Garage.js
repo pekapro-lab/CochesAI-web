@@ -41,7 +41,7 @@ export class Garage {
     built.root.position.y = 0.66
     tt.add(built.root)
     for (const [x, z] of [[0.82, 1.35], [-0.82, 1.35], [0.82, -1.35], [-0.82, -1.35]]) {
-      const w = buildWheel(this.cfg); w.position.set(x, 0.38, z); tt.add(w)
+      const w = buildWheel(this.cfg); w.position.set(x, 0.38, z); const rt = MODEL_BY_ID[this.cfg.model].dims.rearTyre; if (rt && z < 0) w.scale.set(rt, 1.04, 1.04); tt.add(w)
     }
     const m = MODEL_BY_ID[this.cfg.model]
     this.el.querySelector('#gar-desc').textContent = m.desc

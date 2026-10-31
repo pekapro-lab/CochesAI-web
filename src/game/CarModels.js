@@ -16,10 +16,10 @@ export const MODELS = [
   },
   {
     id: 'toro', name: 'Toro V8', desc: 'Muscle car · V8 de 6,2 L, empuje bestial',
-    dims: { w: 2.1, l: 4.6, h: 0.58, cabW: 1.66, cabH: 0.5, cabL: 1.6, cabZ: -0.55, wedge: 0.02, taper: 0.9, hoodH: 0.2, scoop: true, boxy: true },
+    dims: { w: 2.1, l: 4.7, h: 0.58, cabW: 1.6, cabH: 0.5, cabL: 1.6, cabZ: -0.55, wedge: 0.02, taper: 0.9, hoodH: 0.2, muscle: true, rearTyre: 1.4 },
     stats: { accel: 1.18, grip: 0.92, mass: 1120, susp: 38, drift: 1.25 },
     sound: { cyl: 8, idle: 750, redline: 6400, tone: 0.8, sub: 0.6, rough: 0.55, noise: 0.22, turbo: 0, pops: 0.6, bright: 0.7, lope: 0.35 },
-    defaults: { paint: '#1c3fae', finish: 'metal', rims: 'estrella', rimColor: '#2a2a2e', spoiler: 'labio', vinyl: 'doble', vinylColor: '#ffffff', sticker: 'estrella', number: 69 },
+    defaults: { paint: '#a3121b', finish: 'metal', rims: 'estrella', rimColor: '#c8ccd4', spoiler: 'labio', vinyl: 'ninguno', vinylColor: '#ffffff', sticker: 'estrella', number: 69 },
   },
   {
     id: 'neon', name: 'Neón X', desc: 'Hiperdeportivo · V12 atmosférico agudo',
@@ -362,15 +362,18 @@ export function buildCarMesh(cfg, { seed = 0 } = {}) {
   const chromeMat = new THREE.MeshStandardMaterial({ color: 0xd8dce4, metalness: 1, roughness: 0.12 })
   const add = (mesh, shadow = true) => { mesh.castShadow = shadow; root.add(mesh); return mesh }
 
+  let top, hood
+  if (d.muscle) ({ top, hood } = buildMuscle(d, { bodyMat, trimMat, glassMat, chromeMat, add }))
+  else {
   // lower body
   const lowerGeo = new RoundedBoxGeometry(d.w, d.h, d.l, 4, d.boxy ? 0.12 : d.round ? 0.24 : 0.2)
   wedge(lowerGeo, d.l, d.wedge)
   const body = add(new THREE.Mesh(lowerGeo, bodyMat)); body.position.y = 0.05 + (d.h - 0.5) / 2
 
-  const top = 0.05 + d.h - 0.25 // y of the body's top surface (approx.)
+  top = 0.05 + d.h - 0.25 // y of the body's top surface (approx.)
   // hood
   const hoodL = d.hatch ? 1.2 : d.boxy ? 1.9 : 1.6
-  const hood = add(new THREE.Mesh(new RoundedBoxGeometry(d.w * 0.86, d.hoodH, hoodL, 3, Math.min(0.07, d.hoodH / 2 - 0.01)), bodyMat))
+  hood = add(new THREE.Mesh(new RoundedBoxGeometry(d.w * 0.86, d.hoodH, hoodL, 3, Math.min(0.07, d.hoodH / 2 - 0.01)), bodyMat))
   hood.position.set(0, top + d.hoodH / 2 - 0.04, d.l / 2 - hoodL / 2 - 0.35)
   hood.rotation.x = 0.04 + d.wedge * 0.3
   if (d.scoop) {
@@ -402,9 +405,12 @@ export function buildCarMesh(cfg, { seed = 0 } = {}) {
   if (d.intakes) for (const x of [-1, 1]) { const it = add(new THREE.Mesh(new RoundedBoxGeometry(0.06, 0.24, 0.8, 2, 0.02), trimMat)); it.position.set(x * (d.w / 2 + 0.005), 0.12, -0.75) }
   if (d.ducktail) { const dt = add(new THREE.Mesh(new RoundedBoxGeometry(d.w * 0.8, 0.08, 0.4, 2, 0.03), plainMat)); dt.position.set(0, top + 0.04, -d.l / 2 + 0.25); dt.rotation.x = -0.25 }
 
+  }
   // bumpers, skirts, splitter, diffuser
+  if (!d.muscle) {
   const fb = add(new THREE.Mesh(new RoundedBoxGeometry(d.w * 0.98, 0.22, 0.32, 3, 0.1), trimMat)); fb.position.set(0, -0.06, d.l / 2 - 0.1)
   const rb = add(new THREE.Mesh(new RoundedBoxGeometry(d.w * 0.98, 0.24, 0.3, 3, 0.1), trimMat)); rb.position.set(0, -0.04, -d.l / 2 + 0.08)
+  }
   for (const x of [-1, 1]) { const sk = add(new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.12, 2.0, 2, 0.04), trimMat)); sk.position.set(x * (d.w / 2 + 0.01), -0.17, 0) }
   // exhaust tips
   const exN = m.sound.cyl >= 8 ? 2 : 1
@@ -432,7 +438,8 @@ export function buildCarMesh(cfg, { seed = 0 } = {}) {
   const door = decalMat(doorTexture(cfg, seed))
   for (const x of [-1, 1]) {
     const p = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.62), door)
-    p.position.set(x * (d.w / 2 + 0.012), 0.08 + (d.h - 0.5) * 0.5, -0.15)
+    p.position.set(x * (d.w / 2 + (d.muscle ? 0.072 : 0.012)), d.muscle ? 0.1 : 0.08 + (d.h - 0.5) * 0.5, d.muscle ? 0.1 : -0.15)
+    if (d.muscle) p.scale.set(0.85, 0.85, 1)
     p.rotation.y = x * Math.PI / 2
     root.add(p)
   }
@@ -446,17 +453,24 @@ export function buildCarMesh(cfg, { seed = 0 } = {}) {
   // lights
   const lightMat = new THREE.MeshStandardMaterial({ color: 0xfff2cc, emissive: 0xffe9a8, emissiveIntensity: 1.4 })
   const headLightMeshes = []
-  for (const x of [-0.68, 0.68]) {
+  if (d.muscle) {
+    for (const x of [-0.82, -0.56, 0.56, 0.82]) {
+      const hl = new THREE.Mesh(new THREE.CircleGeometry(0.1, 18), lightMat.clone())
+      hl.position.set(x, 0.2, d.l / 2 + 0.012); root.add(hl); headLightMeshes.push(hl)
+      const bezel = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.02, 6, 18), chromeMat); bezel.position.copy(hl.position); root.add(bezel)
+    }
+  } else for (const x of [-0.68, 0.68]) {
     const hl = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.3, 4, 10), lightMat.clone())
     hl.rotation.z = Math.PI / 2; hl.position.set(x, 0.14, d.l / 2 - 0.02); root.add(hl); headLightMeshes.push(hl)
   }
   const tailMat = new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0xff0000, emissiveIntensity: 0.7 })
-  for (const x of [-0.72, 0.72]) {
-    const tl = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.36, 4, 10), tailMat)
+  for (const x of d.muscle ? [-0.6, -0.2, 0.2, 0.6] : [-0.72, 0.72]) {
+    const tl = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, d.muscle ? 0.26 : 0.36, 4, 10), tailMat)
     tl.rotation.z = Math.PI / 2; tl.position.set(x, 0.22, -d.l / 2 - 0.03); root.add(tl)
   }
   // LED scanner bar (CochesAI signature)
-  const scannerGroup = new THREE.Group(); scannerGroup.position.set(0, 0.28, d.l / 2 - 0.1)
+  const scannerGroup = new THREE.Group(); scannerGroup.position.set(0, d.muscle ? -0.05 : 0.28, d.l / 2 + (d.muscle ? 0.08 : -0.1))
+  if (d.muscle) scannerGroup.scale.set(0.7, 0.6, 1)
   const barGeo = new THREE.BoxGeometry(0.14, 0.06, 0.06)
   const scannerLeds = []
   for (let i = 0; i < 11; i++) {
@@ -473,4 +487,87 @@ export function buildCarMesh(cfg, { seed = 0 } = {}) {
   const scannerLight = new THREE.PointLight(0xff1a1a, 1.8, 8, 2); scannerLight.position.set(0, 0.35, d.l / 2); root.add(scannerLight)
 
   return { root, bodyMat, hood, headLightMeshes, scannerLeds, scannerGroup, headLightL, headLightR, scannerLight, model: m }
+}
+
+/**
+ * Classic muscle-car body: extruded side profile (long flat hood, short rear deck, fastback roof),
+ * coke-bottle waist with rear haunches, squared nose with grille, chrome bumpers, hood scoop.
+ */
+function buildMuscle(d, { bodyMat, trimMat, glassMat, chromeMat, add }) {
+  const L = d.l, W = d.w, hl = L / 2
+  // side profile in (z, y): front at +hl
+  const sh = new THREE.Shape()
+  const pts = [
+    [hl, -0.2], [hl, 0.32], [hl - 0.06, 0.4], // squared nose
+    [0.75, 0.45], // long flat hood to the cowl
+    [0.6, 0.47], [0.05, 0.96], // windscreen
+    [-0.55, 0.98], // roof
+    [-1.75, 0.55], // fastback slope
+    [-hl + 0.12, 0.52], [-hl, 0.46], // short rear deck + ducktail
+    [-hl, -0.2],
+  ]
+  sh.moveTo(pts[0][0], pts[0][1]); for (const [z, y] of pts.slice(1)) sh.lineTo(z, y)
+  // wheel arches cut-outs are faked by black arch rings; keep the slab solid for robustness
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: W, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.05, bevelSegments: 2, curveSegments: 4, steps: 6 })
+  geo.translate(0, 0, -W / 2)
+  geo.rotateY(-Math.PI / 2)
+  // coke bottle + tumblehome
+  const p = geo.attributes.position, uv = geo.attributes.uv
+  for (let i = 0; i < p.count; i++) {
+    let x = p.getX(i), y = p.getY(i), z = p.getZ(i)
+    const haunch = Math.exp(-Math.pow((z + 1.3) / 0.55, 2)) * 0.07
+    const waist = -Math.exp(-Math.pow((z - 0.1) / 0.5, 2)) * 0.035
+    const front = Math.exp(-Math.pow((z - 1.4) / 0.4, 2)) * 0.02
+    let k = 1 + haunch + waist + front
+    if (y > 0.5) k *= 1 - Math.min(1, (y - 0.5) / 0.48) * 0.24 // greenhouse narrower than body
+    else if (y > 0.25) k *= 1 - (y - 0.25) * 0.08
+    x *= k
+    p.setX(i, x)
+    uv.setXY(i, (z + hl) / L, (y + 0.3) / 1.4)
+  }
+  geo.computeVertexNormals()
+  const body = add(new THREE.Mesh(geo, bodyMat)); body.position.y = 0.02
+  // glass: windscreen, rear fastback glass, side windows
+  const ws = add(new THREE.Mesh(new THREE.PlaneGeometry(1.36, 0.62), glassMat), false)
+  ws.position.set(0, 0.74 + 0.05 * Math.cos(0.73), 0.36 + 0.05 * Math.sin(0.73))
+  ws.lookAt(ws.position.x, ws.position.y + Math.cos(0.73), ws.position.z + Math.sin(0.73)); ws.scale.set(0.85, 1, 1)
+  const rg = add(new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.92), glassMat), false)
+  rg.position.set(0, 0.8 + 0.06 * Math.cos(0.34), -1.15 - 0.06 * Math.sin(0.34))
+  rg.lookAt(rg.position.x, rg.position.y + Math.cos(0.34), rg.position.z - Math.sin(0.34)); rg.scale.set(0.8, 1, 1)
+  for (const x of [-1, 1]) {
+    const sg = new THREE.Shape(); sg.moveTo(0.52, 0); sg.lineTo(0.08, 0.38); sg.lineTo(-0.55, 0.39); sg.lineTo(-1.25, 0.05); sg.lineTo(0.52, 0)
+    const sgm = add(new THREE.Mesh(new THREE.ShapeGeometry(sg), glassMat), false)
+    sgm.rotation.y = x > 0 ? Math.PI / 2 : -Math.PI / 2
+    sgm.position.set(x * 0.99, 0.57, 0); sgm.rotateX(-0.42)
+    if (x < 0) sgm.scale.x = -1
+    // chrome window trim
+    const tr = add(new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 1.8), chromeMat), false); tr.position.set(x * 1.03, 0.56, -0.35)
+    const mir = add(new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), chromeMat)); mir.scale.set(1.2, 0.8, 1); mir.position.set(x * (W / 2 + 0.02), 0.6, 0.45)
+    // arch lips (black rings) front + bigger rear
+    for (const [z, r] of [[1.35, 0.47], [-1.35, 0.53]]) {
+      const arch = add(new THREE.Mesh(new THREE.TorusGeometry(r, 0.04, 6, 20, Math.PI), trimMat), false)
+      arch.rotation.y = Math.PI / 2; arch.position.set(x * (W / 2 + (z < 0 ? 0.08 : 0.03)), -0.28, z)
+    }
+    // side scallop / rocker chrome
+    const rk = add(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.05, 1.6), chromeMat), false); rk.position.set(x * (W / 2 + 0.02), -0.12, 0)
+  }
+  // grille: black recessed panel + chrome frame + horizontal bars
+  const grille = add(new THREE.Mesh(new THREE.PlaneGeometry(W * 0.88, 0.34), new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.6 })), false)
+  grille.position.set(0, 0.2, hl + 0.005)
+  for (let k = 0; k < 4; k++) { const bar = add(new THREE.Mesh(new THREE.BoxGeometry(W * 0.5, 0.015, 0.02), chromeMat), false); bar.position.set(0, 0.08 + k * 0.08, hl + 0.015) }
+  const gf = add(new THREE.Mesh(new THREE.BoxGeometry(W * 0.9, 0.03, 0.04), chromeMat), false); gf.position.set(0, 0.38, hl + 0.01)
+  // chrome bumpers (full width, slightly wrapped)
+  for (const [z, y] of [[hl + 0.08, -0.08], [-hl - 0.08, -0.04]]) {
+    const bp = add(new THREE.Mesh(new RoundedBoxGeometry(W * 1.0, 0.14, 0.14, 3, 0.06), chromeMat)); bp.position.set(0, y, z)
+    for (const x of [-1, 1]) { const wrap = add(new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.14, 0.4, 2, 0.05), chromeMat)); wrap.position.set(x * (W / 2 - 0.02), y, z - Math.sign(z) * 0.18) }
+  }
+  // hood scoop + bulge
+  const bulge = add(new THREE.Mesh(new RoundedBoxGeometry(0.8, 0.07, 1.4, 2, 0.03), bodyMat)); bulge.position.set(0, 0.5, 1.45)
+  const scoop = add(new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.14, 0.45, 2, 0.04), trimMat)); scoop.position.set(0, 0.57, 1.3)
+  const mouth = add(new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.08), new THREE.MeshBasicMaterial({ color: 0x000000 })), false); mouth.position.set(0, 0.58, 1.53)
+  // gas cap + rear panel chrome strip
+  const strip = add(new THREE.Mesh(new THREE.BoxGeometry(W * 0.8, 0.03, 0.02), chromeMat), false); strip.position.set(0, 0.32, -hl - 0.01)
+  const hood = bulge
+  hood.rotation.x = 0
+  return { top: 0.47, hood }
 }

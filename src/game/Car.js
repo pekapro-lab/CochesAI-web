@@ -273,6 +273,8 @@ export class Car {
     this.wheelMeshes = []
     for (let i = 0; i < 4; i++) {
       const m = buildWheelV2(this.cfg)
+      const rt = this.model.dims.rearTyre
+      if (rt && i >= 2) m.scale.set(rt, 1.04, 1.04)
       scene.add(m)
       this.wheelMeshes.push(m)
     }
