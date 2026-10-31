@@ -7,6 +7,29 @@
     <meta name="description" content="CochesAI — carreras 3D multijugador con rivales de IA" />
     <title>CochesAI · Carreras multijugador</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23050508'/%3E%3Crect x='10' y='28' width='44' height='6' rx='2' fill='%23ff1a1a'/%3E%3C/svg%3E" />
+    <script>
+      // APK (Capacitor, https://localhost): show startup errors on screen instead of a black screen.
+      (function () {
+        if (location.hostname !== 'localhost') return
+        function show(msg) {
+          if (window.__COCHES__ && document.querySelector('.game-canvas') && !show.early) return
+          var el = document.getElementById('boot-error')
+          if (!el) {
+            el = document.createElement('pre'); el.id = 'boot-error'
+            el.style.cssText = 'position:fixed;inset:0;z-index:99999;margin:0;padding:16px;overflow:auto;background:#1a0d0d;color:#ffd7d7;font:12px/1.4 monospace;white-space:pre-wrap'
+            ;(document.body || document.documentElement).appendChild(el)
+            el.textContent = 'CochesAI: error al arrancar\n' + navigator.userAgent + '\n\n'
+          }
+          el.textContent += msg + '\n\n'
+        }
+        show.early = true
+        setTimeout(function () { show.early = false }, 6000)
+        window.__bootError = show
+        window.addEventListener('error', function (e) { show((e.message || 'Error') + (e.filename ? '\n' + e.filename + ':' + e.lineno : '') + (e.error && e.error.stack ? '\n' + e.error.stack : '')) })
+        window.addEventListener('unhandledrejection', function (e) { var r = e.reason; show('Promesa rechazada: ' + ((r && (r.stack || r.message)) || r)) })
+        setTimeout(function () { if (!window.__COCHES__) { show.early = true; show('El juego no ha arrancado tras 8 s (¿el JS no carga en este WebView?).') } }, 8000)
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

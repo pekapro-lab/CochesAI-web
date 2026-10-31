@@ -10,7 +10,9 @@ export default defineConfig({
   base,
   define: { __COCHES_VERSION__: JSON.stringify(pkg.version) },
   build: {
-    target: 'es2020',
+    // Old Android WebViews (APK): Chrome 87+
+    target: ['es2020', 'chrome87'],
+    cssTarget: 'chrome87',
     chunkSizeWarningLimit: 800,
   },
   server: {
