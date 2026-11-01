@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { asphaltRoughness, streakTexture } from './Reflections.js'
 import { asphaltTexture, grassTexture, gravelTexture, kerbTexture, addForest, addBillboards } from './Scenery.js'
 import * as CANNON from 'cannon-es'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
@@ -160,9 +161,14 @@ export function buildTrack(world, scene, def) {
   const roadMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: asphaltTexture(isDay),
-    roughness: 0.85,
-    metalness: 0.1,
+    // v2.1 sheen: satin asphalt with smoother damp patches/tyre tracks (roughnessMap) so the
+    // sun, sky and street lamps glint on it
+    roughness: isDay ? 0.95 : 0.85,
+    roughnessMap: asphaltRoughness(),
+    metalness: 0.06,
+    envMapIntensity: isDay ? 0.9 : 1.4,
   })
+  roadMat.roughnessMap.repeat.set(1, 0.25)
   const road = new THREE.Mesh(roadGeo, roadMat)
   road.receiveShadow = true
   group.add(road)
@@ -405,8 +411,9 @@ function addCoastScenery(group, path, half, def) {
   // Ocean — large plane offset to one side of the circuit
   const waterMat = new THREE.MeshStandardMaterial({
     color: isNight ? 0x0a2a48 : 0x1e7eb8,
-    roughness: 0.18,
-    metalness: 0.55,
+    roughness: 0.06,
+    metalness: 0.4,
+    envMapIntensity: isNight ? 1.2 : 1.8,
     transparent: true,
     opacity: 0.92,
   })
@@ -722,6 +729,11 @@ function addTrackLamps(group, path, half, distToPath, night) {
     map: poolTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     opacity: 0.85, polygonOffset: true, polygonOffsetFactor: -2,
   })
+  // vertical reflection streak of each lamp on the asphalt (fake, additive, no real light)
+  const streakMat = new THREE.MeshBasicMaterial({
+    map: streakTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    opacity: 0.8, polygonOffset: true, polygonOffsetFactor: -3,
+  })
   const haloMat = new THREE.MeshBasicMaterial({
     map: poolTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.9, fog: false, side: THREE.DoubleSide,
   })
@@ -764,6 +776,12 @@ function addTrackLamps(group, path, half, distToPath, night) {
       pool.position.set(hx + toRoad.x * 1.5, 0.045, hz + toRoad.z * 1.5)
       pool.renderOrder = 1
       group.add(pool)
+      const streak = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 18), streakMat)
+      streak.rotation.order = 'YXZ'
+      streak.rotation.set(-Math.PI / 2, Math.atan2(dir.x, dir.z) + Math.PI, 0)
+      streak.position.set(hx + toRoad.x * 0.8, 0.05, hz + toRoad.z * 0.8)
+      streak.renderOrder = 1
+      group.add(streak)
       // horizontal halo under the head reads as a glowing bulb from the driver's view
       for (const ry of [0, Math.PI / 2]) {
         const halo = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2), haloMat)

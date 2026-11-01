@@ -53,6 +53,7 @@ export class UI {
           </div>
           <div class="menu-actions">
             <button class="btn" id="btn-mute-menu" type="button">Sonido</button>
+            <button class="btn" id="btn-music-menu" type="button">Música: Sí</button>
           </div>
           <p class="help">
             Mando: stick izq. dirección · RT acelera · LT frena · B freno de mano · Y cámara · Start pausa<br/>Teclado: WASD / flechas · S/↓ freno o marcha atrás (parado) · Espacio freno de mano · C cámara · R recolocar · P/Esc pausa<br/>
@@ -112,6 +113,7 @@ export class UI {
         <div class="hud-tools">
           <button class="icon-btn" id="btn-cam" type="button" title="Cámara">C</button>
           <button class="icon-btn" id="btn-mute" type="button" title="Silencio">♪</button>
+          <button class="icon-btn" id="btn-music" type="button" title="Música">🎵</button>
           <button class="icon-btn" id="btn-recover" type="button" title="Recolocar (R)">↺</button>
           <button class="icon-btn hud-restart" id="btn-restart-hud" type="button" title="Reiniciar carrera">⟳</button>
           <button class="icon-btn" id="btn-pause" type="button" title="Pausa">Ⅱ</button>
@@ -165,6 +167,8 @@ export class UI {
     this.el.querySelector('#btn-cam').addEventListener('click', () => this.onToggleCamera?.())
     this.el.querySelector('#btn-mute').addEventListener('click', () => this.onToggleMute?.())
     this.el.querySelector('#btn-mute-menu').addEventListener('click', () => this.onToggleMute?.())
+    this.el.querySelector('#btn-music').addEventListener('click', () => this.onToggleMusic?.())
+    this.el.querySelector('#btn-music-menu').addEventListener('click', () => this.onToggleMusic?.())
     this.el.querySelector('#btn-pause').addEventListener('click', () => this.onPause?.())
     this.el.querySelector('#btn-recover').addEventListener('click', () => this.onRecover?.())
     this.el.querySelector('#btn-recover-pause').addEventListener('click', () => {
@@ -320,6 +324,13 @@ export class UI {
 
   setCameraLabel(mode) {
     this.el.querySelector('#btn-cam').textContent = mode === 'hood' ? 'C' : '↕'
+  }
+
+  setMusic(on) {
+    const b = this.el.querySelector('#btn-music')
+    b.textContent = '🎵'; b.style.opacity = on ? '' : '0.4'; b.title = on ? 'Música: sí' : 'Música: no'
+    b.setAttribute('aria-pressed', on ? 'true' : 'false')
+    this.el.querySelector('#btn-music-menu').textContent = on ? 'Música: Sí' : 'Música: No'
   }
 
   setMute(muted) {

@@ -218,8 +218,13 @@ export const RaceMixin = {
       this.audio.silence()
       this.ui.showCountdown(`META · ${r.place}º`)
       this.audio.beep(990, 0.25)
+      this.audio.music.stopLoop(0.4)
+      this.audio.music.play(r.place <= 3 ? 'victoria' : 'fin_carrera')
       setTimeout(() => this.ui.hideCountdown(), 1600)
-    } else this.audio.beep(720, 0.12)
+    } else {
+      this.audio.beep(720, 0.12)
+      if (r.lap === this.totalLaps) this.audio.music.play('ultima_vuelta')
+    }
     this.lap = Math.min(this.totalLaps, r.lap)
   },
 

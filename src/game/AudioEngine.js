@@ -3,6 +3,8 @@
  * Each car model has a profile (cylinders, idle/redline, roughness, sub, turbo, pops…),
  * so a V8 burbles, a V12 shrieks and the turbo 4-cylinder whistles and pops.
  */
+import { Music } from './Music.js'
+
 const DEFAULT_PROFILE = { cyl: 6, idle: 900, redline: 7600, tone: 1, sub: 0.35, rough: 0.25, noise: 0.15, turbo: 0.35, pops: 0.3, bright: 1, lope: 0 }
 
 export class AudioEngine {
@@ -15,6 +17,7 @@ export class AudioEngine {
     this._gearIdx = 0
     this._lastThrottle = 0
     this._popCooldown = 0
+    this.music = new Music(this)
   }
 
   async ensure() {
@@ -26,6 +29,7 @@ export class AudioEngine {
     this._buildEngine()
     this._started = true
     this._applyMute()
+    this.music.init()
   }
 
   setProfile(p) {
@@ -229,6 +233,7 @@ export class AudioEngine {
   }
 
   _applyMute() {
+    this.music?.apply()
     if (!this._engine) return
     this._engine.master.gain.setTargetAtTime(this.muted ? 0 : 0.2, this.ctx.currentTime, 0.05)
   }
