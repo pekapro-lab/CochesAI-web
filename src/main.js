@@ -130,6 +130,7 @@ const origExit = ui.onExitToMenu
 ui.onExitToMenu = () => (net ? leaveNet() : origExit())
 
 ui.setMute(game.audio.muted)
+ui.setMusic(game.audio.music.enabled)
 ui.showMenu(true)
 ui.showHud(false)
 

@@ -126,6 +126,32 @@ export class Game {
       const muted = this.audio.toggleMute()
       this.ui.setMute(muted)
     }
+    this.ui.onToggleMusic = async () => {
+      await this.audio.ensure()
+      const on = this.audio.music.toggle()
+      this.ui.setMusic(on)
+      if (on && this.state === 'menu') this.audio.music.playLoop('menu_garaje', 0.6)
+    }
+    // iOS/Chrome autoplay: create the AudioContext and start the menu loop on the first gesture
+    const GESTURES = ['pointerdown', 'touchend', 'click', 'keydown']
+    const firstGesture = () => {
+      this.audio.ensure().then(() => {
+        const ctx = this.audio.ctx
+        if (!ctx) return
+        if (ctx.state !== 'running') ctx.resume?.().catch(() => {})
+        this.audio.music.unlock()
+        if (this.state === 'menu') this.audio.music.playLoop('menu_garaje', 1.5)
+        if (ctx.state === 'running') for (const ev of GESTURES) document.removeEventListener(ev, firstGesture, true)
+      }).catch(() => {})
+    }
+    for (const ev of GESTURES) document.addEventListener(ev, firstGesture, true)
+    // UI sounds: menu clicks + garage confirm
+    this.ui.el.addEventListener('click', (e) => {
+      const b = e.target.closest?.('button')
+      if (!b || !this.audio.music.ready) return
+      if (b.id === 'gar-close') this.audio.music.ui('ui_confirmar')
+      else if (b.id !== 'gar-rev') this.audio.music.ui('ui_click')
+    }, true)
 
     this.ui.onStartTrack = async (trackId, opts) => {
       await this.audio.ensure()
@@ -226,7 +252,13 @@ export class Game {
     this._raceT0 = opts.startAt != null ? opts.startAt : null
     this._countShown = 3
     this.ui.showCountdown('3')
-    this.audio.beep(520, 0.1)
+    // Music: fade the menu loop, preload this track's race loop, and schedule the countdown
+    // jingle so its "¡YA!" lands exactly on the real start (elapsed 3.8 s)
+    const mu = this.audio.music
+    mu.stopShots(); mu.setDuck(1); mu.stopLoop(1.0)
+    mu.load('carrera_' + trackId).catch(() => {})
+    this._musicCountdown = mu.countdown(this._countStartedAt + 3800)
+    if (!this._musicCountdown) this.audio.beep(520, 0.1)
     this.clock.start()
     if (!this._raf) this._loop()
   }
@@ -288,6 +320,7 @@ export class Game {
     if (this.state !== 'racing') return
     this.state = 'paused'
     this.audio.silence()
+    this.audio.music.setDuck(0.3)
     this.ui.showPause(true)
   }
 
@@ -295,12 +328,16 @@ export class Game {
     if (this.state !== 'paused') return
     this.state = 'racing'
     this.ui.showPause(false)
+    this.audio.music.setDuck(1)
     this.clock.start()
   }
 
   exitToMenu() {
     this.cleanupRace()
     this.state = 'menu'
+    this.audio.music.stopShots()
+    this.audio.music.setDuck(1)
+    this.audio.music.playLoop('menu_garaje', 1.0)
     this.ui.showPause(false)
     this.ui.showCountdown('')
     this.ui.hideCountdown()
@@ -355,10 +392,10 @@ export class Game {
         this._countShown = show
         if (show > 0) {
           this.ui.showCountdown(String(show))
-          this.audio.beep(520, 0.1)
+          if (!this._musicCountdown) this.audio.beep(520, 0.1)
         } else if (show === 0) {
           this.ui.showCountdown('¡YA!')
-          this.audio.beep(880, 0.18)
+          if (!this._musicCountdown) this.audio.beep(880, 0.18)
         } else {
           this.ui.hideCountdown()
           this.state = 'racing'
@@ -366,6 +403,7 @@ export class Game {
           if (this._raceT0 == null) this._raceT0 = this.net ? this.net.hostNow() : performance.now()
           this.raceStartedHost = this.net ? this.net.hostNow() : performance.now()
           for (const r of this.racers || []) r.lapStart = this._raceTime()
+          this.audio.music.playLoop('carrera_' + this._trackId, 0.8)
         }
       }
       this.renderer.render(this.scene, this.camera)
@@ -664,6 +702,7 @@ export class Game {
           this.audio.silence()
           this.ui.showCountdown('META')
           this.audio.beep(990, 0.25)
+          this.audio.music.stopLoop(0.4); this.audio.music.play('victoria')
           setTimeout(() => {
             this.ui.hideCountdown()
             this.pause()
@@ -672,6 +711,7 @@ export class Game {
         } else {
           this.lap += 1
           this.audio.beep(720, 0.12)
+          if (this.lap === this.totalLaps) this.audio.music.play('ultima_vuelta')
         }
         this.lapStart = performance.now()
       }
