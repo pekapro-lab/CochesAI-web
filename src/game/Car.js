@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { glowTexture } from './Reflections.js'
 import * as CANNON from 'cannon-es'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { buildCarMesh, buildWheel as buildWheelV2, defaultConfig, MODEL_BY_ID, SPOILERS } from './CarModels.js'
@@ -708,6 +709,12 @@ export class Car {
     this.headLightR.distance = night ? 95 : 20
     for (const m of this.headLightMeshes) {
       m.material.emissiveIntensity = night ? 2.0 : 0.2
+      // cheap additive glow sprite on each headlight (no extra lights)
+      if (!m.userData.glow) {
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xfff0d0, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.85 }))
+        sp.scale.set(0.55, 0.55, 1); sp.renderOrder = 3; m.add(sp); m.userData.glow = sp
+      }
+      m.userData.glow.visible = night
     }
     this.scannerLight.intensity = night ? 2.4 : 0.25
     this.scannerLight.distance = night ? 10 : 4

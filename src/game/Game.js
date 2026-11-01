@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { skyEnvironment } from './Reflections.js'
 import * as CANNON from 'cannon-es'
 import { Car } from './Car.js'
 import { buildTrack } from './TrackBuilder.js'
@@ -53,6 +54,10 @@ export class Game {
     this._prMax = Math.min(window.devicePixelRatio || 1, 1.5)
     this._pr = this._prMax
     this._perf = { t: 0, frames: 0 }
+    // Reflection quality: 'high' (256 env + clearcoat) or 'low' (64 env, no clearcoat).
+    // Starts high everywhere; drops automatically if frames stay slow at the lowest resolution.
+    this.quality = localStorage.getItem('cochesai-quality') === 'low' ? 'low' : 'high'
+    this._slowWindows = 0
     this.renderer = new THREE.WebGLRenderer({
       antialias: false,
       powerPreference: 'high-performance',
@@ -244,6 +249,7 @@ export class Game {
     })
     this.ui.drawMinimap(this.track.path, null)
 
+    if (this.quality === 'low') this._applyQualityToCars()
     this.input.bind()
     this.state = 'countdown'
     this._countdown = 3
@@ -253,11 +259,12 @@ export class Game {
     this._countShown = 3
     this.ui.showCountdown('3')
     // Music: fade the menu loop, preload this track's race loop, and schedule the countdown
-    // jingle so its "¡YA!" lands exactly on the real start (elapsed 3.8 s)
+    // jingle so its "¡YA!" hit (2.4 s into the file) lands with the on-screen "¡YA!" (elapsed 3.0 s);
+    // the physical start stays at 3.8 s
     const mu = this.audio.music
     mu.stopShots(); mu.setDuck(1); mu.stopLoop(1.0)
     mu.load('carrera_' + trackId).catch(() => {})
-    this._musicCountdown = mu.countdown(this._countStartedAt + 3800)
+    this._musicCountdown = mu.countdown(this._countStartedAt + 3000)
     if (!this._musicCountdown) this.audio.beep(520, 0.1)
     this.clock.start()
     if (!this._raf) this._loop()
@@ -272,6 +279,7 @@ export class Game {
     const avg = p.t / p.frames
     p.t = 0; p.frames = 0
     let pr = this._pr
+    if (avg > 1 / 40 && pr <= 0.75 && this.quality === 'high') { if (++this._slowWindows >= 3) this._setQuality('low') } else this._slowWindows = 0
     if (avg > 1 / 40 && pr > 0.75) pr = Math.max(0.75, pr - 0.15)
     else if (avg < 1 / 55 && pr < this._prMax) pr = Math.min(this._prMax, pr + 0.1)
     if (pr !== this._pr) {
@@ -296,8 +304,8 @@ export class Game {
       this.ambient.intensity = 0.55
       this.ambient.color.set(0xffffff)
       this.renderer.toneMappingExposure = 1.15
-      this.scene.environment = this.envMap
-      this.scene.environmentIntensity = 0.9
+      this.scene.environment = this._skyEnv('day')
+      this.scene.environmentIntensity = 1.0
     } else {
       this.scene.background = new THREE.Color(0x03050a)
       this.scene.fog = new THREE.FogExp2(0x070a16, 0.008)
@@ -311,9 +319,32 @@ export class Game {
       this.ambient.intensity = 0.6
       this.ambient.color.set(0x24304e)
       this.renderer.toneMappingExposure = 1.25
-      this.scene.environment = this.envMap
-      this.scene.environmentIntensity = 0.3
+      this.scene.environment = this._skyEnv('night')
+      this.scene.environmentIntensity = 0.9
     }
+  }
+
+  _skyEnv(mode) {
+    try { return skyEnvironment(this.renderer, mode, this.quality === 'low' ? 64 : 256) } catch { return this.envMap }
+  }
+
+  /** Lower/raise reflection cost at runtime (visual only). */
+  _setQuality(q) {
+    if (q === this.quality) return
+    this.quality = q
+    this.scene.environment = this._skyEnv(this.timeOfDay)
+    this._applyQualityToCars()
+  }
+
+  _applyQualityToCars() {
+    const low = this.quality === 'low'
+    for (const r of this.racers || []) r.car?.mesh?.traverse?.((o) => {
+      const m = o.material
+      if (!m || !m.isMeshPhysicalMaterial) return
+      if (m.userData.cc == null) m.userData.cc = m.clearcoat
+      const want = low ? 0 : m.userData.cc
+      if (m.clearcoat !== want) { m.clearcoat = want; m.needsUpdate = true }
+    })
   }
 
   pause() {
