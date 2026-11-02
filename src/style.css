@@ -468,3 +468,14 @@ canvas.game-canvas {
 #gar-num { width: 70px; }
 .gassist { font-size: 13px; display: flex; gap: 6px; align-items: center; }
 @media (orientation: portrait) { .garage-panel { left: 8px; right: 8px; top: auto; width: auto; height: 52vh; } }
+
+/* realista: garaje — respetar muesca/barras de Safari y que «Guardar y salir» no quede tapado (ni por el panel ni por la X de las pestañas de Safari) */
+.garage-top { left: max(12px, env(safe-area-inset-left)); top: max(10px, env(safe-area-inset-top)); right: calc(min(380px, 40vw) + 24px + env(safe-area-inset-right)); z-index: 2; }
+.garage-panel { right: max(10px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 1; }
+@media (orientation: landscape) {
+  #gar-close { position: fixed; left: max(14px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 40; pointer-events: auto; }
+}
+@media (orientation: portrait) {
+  .garage-top { right: max(12px, env(safe-area-inset-right)); top: max(56px, calc(env(safe-area-inset-top) + 12px)); }
+  .garage-panel { left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); top: auto; bottom: max(8px, env(safe-area-inset-bottom)); }
+}
