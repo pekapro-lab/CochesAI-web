@@ -517,6 +517,7 @@ export class Car {
     const wantReverse = controls.brake > 0 && speed < 0.6
     const wantBrake = controls.brake > 0 && !wantReverse && speed > 0.3
     this.gear = wantReverse ? 'R' : 'D'
+    this.fx = { brake: wantBrake && Number(controls.brake) > 0.05, reverse: wantReverse, hb: !!controls.handbrake }
 
     if (controls.throttle && !wantReverse) {
       // Extra pull above 100 km/h so the player can reach its higher top speed (rivals: highSpeedBoost 0)

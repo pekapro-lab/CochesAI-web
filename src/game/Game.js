@@ -11,6 +11,7 @@ import { formatTime } from './format.js'
 import { RaceMixin } from './RaceMixin.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { Garage } from './Garage.js'
+import { Effects } from './Effects.js'
 import { loadCarHdri, setRealCarEnv } from './RealCar.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
@@ -236,6 +237,7 @@ export class Game {
     this._chassisMat = chassisMaterial
     this.world.addContactMaterial(new CANNON.ContactMaterial(chassisMaterial, chassisMaterial, { friction: 0.05, restitution: 0.15 }))
     this._setupRacers(opts)
+    try { this.fx?.dispose(); this.fx = new Effects(this) } catch (e) { console.warn('[realista] efectos', e); this.fx = null }
     this.totalLaps = opts.laps || this.track.laps
     this.lap = 1
     this.bestLap = Number(localStorage.getItem(bestKey(def.id))) || null
@@ -416,6 +418,7 @@ export class Game {
   }
 
   cleanupRace() {
+    this.fx?.dispose(); this.fx = null
     this.audio.silence(true)
     this.input.unbind()
     if (this.racers) for (const r of this.racers) if (r !== this.me) r.car.dispose()
@@ -526,6 +529,7 @@ export class Game {
         })
         this.ui.drawMinimap(this.track.path, this.car.getPosition(), this.racers)
       }
+      this.fx?.update(dt)
       this._updateCamera()
       this._render()
     }

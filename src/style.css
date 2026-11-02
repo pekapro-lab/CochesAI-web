@@ -515,3 +515,8 @@ canvas.game-canvas {
   .touch .handbrake { left: auto; transform: none; right: max(96px, calc(env(safe-area-inset-right) + 82px)); bottom: max(36px, env(safe-area-inset-bottom)); padding: 0 12px; }
 }
 @media (orientation: portrait) { .touch .handbrake { right: max(90px, calc(env(safe-area-inset-right) + 76px)); font-size: 0.68rem; letter-spacing: 0.03em; padding: 0 10px; } }
+
+/* realista: líneas de velocidad */
+.speedlines { position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0;
+  background: repeating-conic-gradient(from 0deg at 50% 55%, rgba(255,255,255,0.0) 0deg 2.2deg, rgba(255,255,255,0.55) 2.4deg 2.6deg, rgba(255,255,255,0) 2.8deg 7deg);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 55%, transparent 38%, #000 80%); mask-image: radial-gradient(ellipse at 50% 55%, transparent 38%, #000 80%); }
