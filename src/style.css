@@ -498,3 +498,20 @@ canvas.game-canvas {
 @media (max-height: 500px) and (orientation: landscape) {
   .touch-device .minimap { width: 92px; height: 92px; left: auto; right: max(14px, calc(env(safe-area-inset-right) + 6px)); top: max(74px, calc(env(safe-area-inset-top) + 68px)); bottom: auto; }
 }
+
+/* realista: móvil horizontal — velocímetro y freno de mano junto a los pedales, sin tapar el coche ni solaparse */
+@media (max-height: 500px) and (orientation: landscape) {
+  .touch-device .speedo { left: auto; transform: none; right: max(100px, calc(env(safe-area-inset-right) + 86px)); bottom: max(96px, calc(env(safe-area-inset-bottom) + 84px)); padding: 4px 14px 6px; border-radius: 12px; }
+  .touch-device .speedo .kmh { font-size: 1.6rem; }
+  .touch .handbrake { left: auto; transform: none; right: max(100px, calc(env(safe-area-inset-right) + 86px)); bottom: max(36px, env(safe-area-inset-bottom)); }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .touch-device .stick { width: 130px; height: 130px; bottom: max(18px, env(safe-area-inset-bottom)); }
+  .standings { font-size: 10.5px; line-height: 1.3; padding: 4px 8px 4px 22px; }
+}
+@media (orientation: portrait) {
+  .touch-device .speedo { left: auto; transform: none; right: max(14px, env(safe-area-inset-right)); bottom: max(190px, calc(env(safe-area-inset-bottom) + 176px)); padding: 4px 12px 6px; border-radius: 12px; }
+  .touch-device .speedo .kmh { font-size: 1.6rem; }
+  .touch .handbrake { left: auto; transform: none; right: max(96px, calc(env(safe-area-inset-right) + 82px)); bottom: max(36px, env(safe-area-inset-bottom)); padding: 0 12px; }
+}
+@media (orientation: portrait) { .touch .handbrake { right: max(90px, calc(env(safe-area-inset-right) + 76px)); font-size: 0.68rem; letter-spacing: 0.03em; padding: 0 10px; } }
