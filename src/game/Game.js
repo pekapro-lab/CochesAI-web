@@ -11,6 +11,11 @@ import { formatTime } from './format.js'
 import { RaceMixin } from './RaceMixin.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { Garage } from './Garage.js'
+import { loadCarHdri, setRealCarEnv } from './RealCar.js'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 
 
 function bestKey(trackId) {
@@ -108,6 +113,7 @@ export class Game {
     this.scene.environment = this.envMap
     this.scene.environmentIntensity = 0.4
     this.garage = new Garage(this)
+    loadCarHdri(this.renderer).then(() => setRealCarEnv(this.timeOfDay !== 'day')).catch((e) => console.warn('[realista] HDRI', e?.message || e))
     // Wider shadow camera so day shadows look good on track
     const sm = this.isIOS ? 1024 : 2048
     this.sun.shadow.mapSize.set(sm, sm)
@@ -289,7 +295,35 @@ export class Game {
     }
   }
 
+  _bloomWanted() {
+    const q = localStorage.getItem('cochesai-bloom')
+    if (q === 'no') return false
+    if (q === 'si') return true
+    return !this.isIOS && this.quality !== 'low'
+  }
+
+  _render() {
+    if (!this._bloomWanted()) { this.renderer.render(this.scene, this.camera); return }
+    if (!this.composer) {
+      const size = this.renderer.getDrawingBufferSize(new THREE.Vector2())
+      const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType })
+      this.composer = new EffectComposer(this.renderer, rt)
+      this.composer.addPass(new RenderPass(this.scene, this.camera))
+      this.bloomPass = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.3, 0.4, 0.9)
+      this.composer.addPass(this.bloomPass)
+      this.composer.addPass(new OutputPass())
+      this._composerSize = ''
+    }
+    const w = window.innerWidth, h = window.innerHeight, key = w + 'x' + h + '@' + this.renderer.getPixelRatio()
+    if (key !== this._composerSize) { this._composerSize = key; this.composer.setPixelRatio(this.renderer.getPixelRatio()); this.composer.setSize(w, h) }
+    const night = this.timeOfDay !== 'day'
+    this.bloomPass.strength = night ? 0.55 : 0.22
+    this.bloomPass.threshold = night ? 0.75 : 0.92
+    this.composer.render()
+  }
+
   _applyLighting(mode) {
+    setRealCarEnv(mode !== 'day')
     this.env?.apply(mode)
     if (mode === 'day') {
       this.scene.background = new THREE.Color(0x9ec8f0)
@@ -378,7 +412,7 @@ export class Game {
     cancelAnimationFrame(this._raf)
     this._raf = 0
     // keep rendering empty-ish sky? just clear once
-    this.renderer.render(this.scene, this.camera)
+    this._render()
   }
 
   cleanupRace() {
@@ -437,7 +471,7 @@ export class Game {
           this.audio.music.playLoop('carrera_' + this._trackId, 0.8)
         }
       }
-      this.renderer.render(this.scene, this.camera)
+      this._render()
       return
     }
 
@@ -454,7 +488,7 @@ export class Game {
     }
     if (this.state === 'racing') this._silenced = false
     if (this.state === 'paused' || this.state === 'menu') {
-      this.renderer.render(this.scene, this.camera)
+      this._render()
       return
     }
 
@@ -493,7 +527,7 @@ export class Game {
         this.ui.drawMinimap(this.track.path, this.car.getPosition(), this.racers)
       }
       this._updateCamera()
-      this.renderer.render(this.scene, this.camera)
+      this._render()
     }
   }
 

@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { glowTexture } from './Reflections.js'
 import * as CANNON from 'cannon-es'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { applyRealCar, realCarsEnabled, forgetRealCar } from './RealCar.js'
 import { buildCarMesh, buildWheel as buildWheelV2, defaultConfig, MODEL_BY_ID, SPOILERS } from './CarModels.js'
 
 function canvasTex(w, h, draw, repeat = 1) {
@@ -281,6 +282,8 @@ export class Car {
       scene.add(m)
       this.wheelMeshes.push(m)
     }
+    // realista: modelo GLB para el coche del jugador (el clásico queda de reserva)
+    if (!opts.lite && realCarsEnabled()) applyRealCar(this, { paint: this.cfg.paint, night: this._night !== false })
 
     this.maxSteer = 0.55
     this.maxForce = 3600 * this.model.stats.accel
@@ -735,6 +738,7 @@ export class Car {
   }
 
   dispose() {
+    this._disposed = true; forgetRealCar(this)
     if (!this.remote) this.vehicle.removeFromWorld(this.world)
     this.world.removeBody(this.chassisBody)
     this.scene.remove(this.mesh)
