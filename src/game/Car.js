@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { glowTexture } from './Reflections.js'
 import * as CANNON from 'cannon-es'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { applyRealCar, realCarsEnabled, forgetRealCar } from './RealCar.js'
 import { buildCarMesh, buildWheel as buildWheelV2, defaultConfig, MODEL_BY_ID, SPOILERS } from './CarModels.js'
 
 function canvasTex(w, h, draw, repeat = 1) {
@@ -281,6 +282,8 @@ export class Car {
       scene.add(m)
       this.wheelMeshes.push(m)
     }
+    // realista: modelo GLB para el coche del jugador (el clásico queda de reserva)
+    if (realCarsEnabled()) applyRealCar(this, { paint: this.cfg.paint, night: this._night !== false, lod: !!opts.lite })
 
     this.maxSteer = 0.55
     this.maxForce = 3600 * this.model.stats.accel
@@ -514,6 +517,7 @@ export class Car {
     const wantReverse = controls.brake > 0 && speed < 0.6
     const wantBrake = controls.brake > 0 && !wantReverse && speed > 0.3
     this.gear = wantReverse ? 'R' : 'D'
+    this.fx = { brake: wantBrake && Number(controls.brake) > 0.05, reverse: wantReverse, hb: !!controls.handbrake }
 
     if (controls.throttle && !wantReverse) {
       // Extra pull above 100 km/h so the player can reach its higher top speed (rivals: highSpeedBoost 0)
@@ -735,6 +739,7 @@ export class Car {
   }
 
   dispose() {
+    this._disposed = true; forgetRealCar(this)
     if (!this.remote) this.vehicle.removeFromWorld(this.world)
     this.world.removeBody(this.chassisBody)
     this.scene.remove(this.mesh)

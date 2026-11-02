@@ -468,3 +468,55 @@ canvas.game-canvas {
 #gar-num { width: 70px; }
 .gassist { font-size: 13px; display: flex; gap: 6px; align-items: center; }
 @media (orientation: portrait) { .garage-panel { left: 8px; right: 8px; top: auto; width: auto; height: 52vh; } }
+
+/* realista: garaje — respetar muesca/barras de Safari y que «Guardar y salir» no quede tapado (ni por el panel ni por la X de las pestañas de Safari) */
+.garage-top { left: max(12px, env(safe-area-inset-left)); top: max(10px, env(safe-area-inset-top)); right: calc(min(380px, 40vw) + 24px + env(safe-area-inset-right)); z-index: 2; }
+.garage-panel { right: max(10px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 1; }
+@media (orientation: landscape) {
+  #gar-close { position: fixed; left: max(14px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 40; pointer-events: auto; }
+}
+@media (orientation: portrait) {
+  .garage-top { right: max(12px, env(safe-area-inset-right)); top: max(56px, calc(env(safe-area-inset-top) + 12px)); }
+  .garage-panel { left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); top: auto; bottom: max(8px, env(safe-area-inset-bottom)); }
+}
+
+/* realista: HUD en carrera lejos de las barras/pestañas de Safari y la muesca */
+.hud-top { top: max(12px, calc(env(safe-area-inset-top) + 6px)); padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+.standings { left: max(10px, env(safe-area-inset-left)); }
+@media (pointer: coarse) {
+  .icon-btn { width: 44px; height: 44px; }
+  .hud-tools { top: max(76px, calc(env(safe-area-inset-top) + 70px)); right: max(14px, calc(env(safe-area-inset-right) + 8px)); }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  /* fila centrada DEBAJO de los marcadores, lejos de la esquina superior derecha */
+  .hud-tools { flex-direction: row; top: max(74px, calc(env(safe-area-inset-top) + 68px)); left: 50%; right: auto; transform: translateX(-50%); }
+  .standings { top: max(74px, calc(env(safe-area-inset-top) + 68px)); }
+}
+.pause-card, .results > * { max-height: calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); overflow-y: auto; }
+
+/* realista: minimapa en móvil horizontal — a la derecha, bajo «Mejor», encima del ▲ (no pisa POS ni clasificación) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .touch-device .minimap { width: 92px; height: 92px; left: auto; right: max(14px, calc(env(safe-area-inset-right) + 6px)); top: max(74px, calc(env(safe-area-inset-top) + 68px)); bottom: auto; }
+}
+
+/* realista: móvil horizontal — velocímetro y freno de mano junto a los pedales, sin tapar el coche ni solaparse */
+@media (max-height: 500px) and (orientation: landscape) {
+  .touch-device .speedo { left: auto; transform: none; right: max(100px, calc(env(safe-area-inset-right) + 86px)); bottom: max(96px, calc(env(safe-area-inset-bottom) + 84px)); padding: 4px 14px 6px; border-radius: 12px; }
+  .touch-device .speedo .kmh { font-size: 1.6rem; }
+  .touch .handbrake { left: auto; transform: none; right: max(100px, calc(env(safe-area-inset-right) + 86px)); bottom: max(36px, env(safe-area-inset-bottom)); }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .touch-device .stick { width: 130px; height: 130px; bottom: max(18px, env(safe-area-inset-bottom)); }
+  .standings { font-size: 10.5px; line-height: 1.3; padding: 4px 8px 4px 22px; }
+}
+@media (orientation: portrait) {
+  .touch-device .speedo { left: auto; transform: none; right: max(14px, env(safe-area-inset-right)); bottom: max(190px, calc(env(safe-area-inset-bottom) + 176px)); padding: 4px 12px 6px; border-radius: 12px; }
+  .touch-device .speedo .kmh { font-size: 1.6rem; }
+  .touch .handbrake { left: auto; transform: none; right: max(96px, calc(env(safe-area-inset-right) + 82px)); bottom: max(36px, env(safe-area-inset-bottom)); padding: 0 12px; }
+}
+@media (orientation: portrait) { .touch .handbrake { right: max(90px, calc(env(safe-area-inset-right) + 76px)); font-size: 0.68rem; letter-spacing: 0.03em; padding: 0 10px; } }
+
+/* realista: líneas de velocidad */
+.speedlines { position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0;
+  background: repeating-conic-gradient(from 0deg at 50% 55%, rgba(255,255,255,0.0) 0deg 2.2deg, rgba(255,255,255,0.55) 2.4deg 2.6deg, rgba(255,255,255,0) 2.8deg 7deg);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 55%, transparent 38%, #000 80%); mask-image: radial-gradient(ellipse at 50% 55%, transparent 38%, #000 80%); }

@@ -169,6 +169,15 @@ export function buildTrack(world, scene, def) {
     envMapIntensity: isDay ? 0.9 : 1.4,
   })
   roadMat.roughnessMap.repeat.set(1, 0.25)
+  // realista · Fase 4: texturas CC0 de Poly Haven (asfalto y hierba); el procedural queda hasta que cargan
+  if (localStorage.getItem('cochesai-texreal') !== 'no') {
+    const base = import.meta.env.BASE_URL || '/'
+    const tl = new THREE.TextureLoader()
+    const prep = (t, rx, ry, srgb) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 4; if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t }
+    tl.load(base + 'tex/asfalto_diff.webp', (t) => { roadMat.map = prep(t, 2, 1.4, true); roadMat.color.set(isDay ? 0xc4c4c4 : 0x7a7a7a); roadMat.needsUpdate = true }, undefined, () => {})
+    tl.load(base + 'tex/asfalto_nor.webp', (t) => { roadMat.normalMap = prep(t, 2, 1.4, false); roadMat.normalScale.set(0.5, 0.5); roadMat.needsUpdate = true }, undefined, () => {})
+    if (groundMat.map) tl.load(base + 'tex/hierba_diff.webp', (t) => { groundMat.map = prep(t, groundSize / 14, groundSize / 14, true); groundMat.color.set(isDay ? 0xd8e8c8 : 0x8a9a80); groundMat.needsUpdate = true }, undefined, () => {})
+  }
   const road = new THREE.Mesh(roadGeo, roadMat)
   road.receiveShadow = true
   group.add(road)
