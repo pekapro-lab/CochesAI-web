@@ -479,3 +479,17 @@ canvas.game-canvas {
   .garage-top { right: max(12px, env(safe-area-inset-right)); top: max(56px, calc(env(safe-area-inset-top) + 12px)); }
   .garage-panel { left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); top: auto; bottom: max(8px, env(safe-area-inset-bottom)); }
 }
+
+/* realista: HUD en carrera lejos de las barras/pestañas de Safari y la muesca */
+.hud-top { top: max(12px, calc(env(safe-area-inset-top) + 6px)); padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+.standings { left: max(10px, env(safe-area-inset-left)); }
+@media (pointer: coarse) {
+  .icon-btn { width: 44px; height: 44px; }
+  .hud-tools { top: max(76px, calc(env(safe-area-inset-top) + 70px)); right: max(14px, calc(env(safe-area-inset-right) + 8px)); }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  /* fila centrada DEBAJO de los marcadores, lejos de la esquina superior derecha */
+  .hud-tools { flex-direction: row; top: max(74px, calc(env(safe-area-inset-top) + 68px)); left: 50%; right: auto; transform: translateX(-50%); }
+  .standings { top: max(74px, calc(env(safe-area-inset-top) + 68px)); }
+}
+.pause-card, .results > * { max-height: calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); overflow-y: auto; }
