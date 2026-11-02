@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { buildRealPreview, realCarsEnabled } from './RealCar.js'
 import { MODELS, MODEL_BY_ID, FINISHES, RIMS, SPOILERS, VINYLS, STICKERS, PAINTS, buildCarMesh, buildWheel, loadGarage, saveGarage, defaultConfig } from './CarModels.js'
 
 /** Garage / tuning shop: 3D turntable + options; config saved in localStorage. */
@@ -42,6 +43,15 @@ export class Garage {
     tt.add(built.root)
     for (const [x, z] of [[0.82, 1.35], [-0.82, 1.35], [0.82, -1.35], [-0.82, -1.35]]) {
       const w = buildWheel(this.cfg); w.position.set(x, 0.38, z); const rt = MODEL_BY_ID[this.cfg.model].dims.rearTyre; if (rt && z < 0) w.scale.set(rt, 1.04, 1.04); tt.add(w)
+    }
+    // realista: en carrera el coche del jugador usa la carrocería realista; el modelo elegido conserva sus estadísticas
+    if (realCarsEnabled()) {
+      const token = (this._realTok = (this._realTok || 0) + 1)
+      buildRealPreview(this.cfg.paint).then((g) => {
+        if (token !== this._realTok) return
+        for (const ch of tt.children) ch.visible = false
+        tt.add(g)
+      }).catch((e) => console.warn('[realista] garaje', e?.message || e))
     }
     const m = MODEL_BY_ID[this.cfg.model]
     this.el.querySelector('#gar-desc').textContent = m.desc

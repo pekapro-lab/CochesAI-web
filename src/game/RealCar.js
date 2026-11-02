@@ -120,3 +120,21 @@ export async function applyRealCar(car, { paint, night, lod = false } = {}) {
 }
 
 export function forgetRealCar(car) { if (car.realModel) _models.delete(car.realModel) }
+
+/** Garaje: modelo realista completo (con ruedas) apoyado en y=0, batalla 2,7 m, frente hacia +Z. */
+export async function buildRealPreview(paint) {
+  const gltf = await loadGltf(false)
+  const src = gltf.scene.clone(true)
+  src.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.material = [].concat(o.material).map((m) => fixMat(m, paint, o.name, false)); if (o.material.length === 1) o.material = o.material[0] } })
+  const wheels = ['WheelFrontL', 'WheelFrontR', 'WheelRearL', 'WheelRearR'].map((n) => src.getObjectByName(n))
+  const holder = new THREE.Group(), orient = new THREE.Group(); holder.add(orient); orient.add(src)
+  holder.updateMatrixWorld(true)
+  const c = wheels.map((w) => new THREE.Vector3().setFromMatrixPosition(w.matrixWorld))
+  const dir = c[0].clone().add(c[1]).sub(c[2]).sub(c[3]).multiplyScalar(0.5); dir.y = 0
+  orient.rotation.y = -Math.atan2(dir.x, dir.z); orient.scale.setScalar(2.7 / dir.length())
+  holder.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(src), ctr = box.getCenter(new THREE.Vector3())
+  orient.position.set(-ctr.x, -box.min.y, -ctr.z)
+  if (_hdrTex) holder.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) m.envMap = _hdrTex })
+  return holder
+}
