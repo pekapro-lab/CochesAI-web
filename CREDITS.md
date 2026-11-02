@@ -7,3 +7,6 @@
 
 - **Kloppenheim 06 (Pure Sky)** HDRI 1k (`public/hdri/kloppenheim_06_puresky_1k.hdr`)
   Poly Haven — https://polyhaven.com/a/kloppenheim_06_puresky — Licencia CC0 (dominio público).
+
+- **Asphalt Track** (Dimitrios Savva) — https://polyhaven.com/a/asphalt_track — CC0. Usado: difusa 1024 px y normal 512 px en WebP (`public/tex/asfalto_*.webp`).
+- **Aerial Grass Rock** (Rob Tuytel) — https://polyhaven.com/a/aerial_grass_rock — CC0. Usado: difusa 512 px WebP (`public/tex/hierba_diff.webp`).

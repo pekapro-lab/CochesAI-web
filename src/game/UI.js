@@ -59,7 +59,7 @@ export class UI {
             Mando: stick izq. dirección · RT acelera · LT frena · B freno de mano · Y cámara · Start pausa<br/>Teclado: WASD / flechas · S/↓ freno o marcha atrás (parado) · Espacio freno de mano · C cámara · R recolocar · P/Esc pausa<br/>
             Móvil: ▲ acelera · ▼ frena / marcha atrás · ↺ recoloca · ⟳ reinicia
           </p>
-          <p class="help credits">Créditos: coche «Car Concept» (Khronos glTF Sample Assets, CC BY 4.0) · cielo HDRI «Kloppenheim 06 Pure Sky» (Poly Haven, CC0)</p>
+          <p class="help credits">Créditos: coche «Car Concept» (Khronos glTF Sample Assets, CC BY 4.0) · cielo HDRI «Kloppenheim 06 Pure Sky» y texturas «Asphalt Track» y «Aerial Grass Rock» (Poly Haven, CC0)</p>
         </div>
       </div>
 
