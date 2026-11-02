@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { glowTexture } from './Reflections.js'
 import * as CANNON from 'cannon-es'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _va = new THREE.Vector3()
 import { applyRealCar, realCarsEnabled, forgetRealCar } from './RealCar.js'
 import { buildCarMesh, buildWheel as buildWheelV2, defaultConfig, MODEL_BY_ID, SPOILERS } from './CarModels.js'
 
@@ -602,14 +603,18 @@ export class Car {
       av.y -= av.y * k
     }
 
-    this.mesh.position.copy(this.chassisBody.position)
-    this.mesh.quaternion.copy(this.chassisBody.quaternion)
-
+    // capo: pose interpolada entre pasos de física (sin tirones por 60 fps vs 90 Hz)
+    const b = this.chassisBody, ip = b.interpolatedPosition, iq = b.interpolatedQuaternion
+    this.mesh.position.set(ip.x, ip.y, ip.z)
+    this.mesh.quaternion.set(iq.x, iq.y, iq.z, iq.w)
+    _qa.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w).invert()
+    _qb.set(iq.x, iq.y, iq.z, iq.w).multiply(_qa) // rotación física → interpolada
     for (let i = 0; i < this.vehicle.wheelInfos.length; i++) {
       this.vehicle.updateWheelTransform(i)
       const t = this.vehicle.wheelInfos[i].worldTransform
-      this.wheelMeshes[i].position.copy(t.position)
-      this.wheelMeshes[i].quaternion.copy(t.quaternion)
+      _va.set(t.position.x - b.position.x, t.position.y - b.position.y, t.position.z - b.position.z).applyQuaternion(_qb)
+      this.wheelMeshes[i].position.set(ip.x + _va.x, ip.y + _va.y, ip.z + _va.z)
+      this.wheelMeshes[i].quaternion.set(t.quaternion.x, t.quaternion.y, t.quaternion.z, t.quaternion.w).premultiply(_qb)
     }
 
     this.scannerPhase += dt * 3.2
