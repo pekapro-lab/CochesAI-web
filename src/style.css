@@ -493,3 +493,8 @@ canvas.game-canvas {
   .standings { top: max(74px, calc(env(safe-area-inset-top) + 68px)); }
 }
 .pause-card, .results > * { max-height: calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); overflow-y: auto; }
+
+/* realista: minimapa en móvil horizontal — a la derecha, bajo «Mejor», encima del ▲ (no pisa POS ni clasificación) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .touch-device .minimap { width: 92px; height: 92px; left: auto; right: max(14px, calc(env(safe-area-inset-right) + 6px)); top: max(74px, calc(env(safe-area-inset-top) + 68px)); bottom: auto; }
+}

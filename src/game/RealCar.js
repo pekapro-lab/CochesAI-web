@@ -5,18 +5,35 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 
 // "Car Concept" — Khronos glTF Sample Assets, CC-BY 4.0 (ver CREDITS.md)
 const BASE = import.meta.env.BASE_URL || '/'
-let _gltfP = null
+const _gltfP = {}
+const _matCache = new Map() // rivals: one material set per colour
 let _hdrTex = null
 const _models = new Set()
 
 export const realCarsEnabled = () => localStorage.getItem('cochesai-realista') !== 'no'
 
-function loadGltf() {
-  if (!_gltfP) {
+function loadGltf(lod) {
+  const k = lod ? 'lod' : 'full'
+  if (!_gltfP[k]) {
     const l = new GLTFLoader(); l.setMeshoptDecoder(MeshoptDecoder)
-    _gltfP = l.loadAsync(BASE + 'models/car-concept.glb')
+    _gltfP[k] = l.loadAsync(BASE + (lod ? 'models/car-concept-lod.glb' : 'models/car-concept.glb')).then((g) => {
+      if (lod) { // LOD: sin interior ni limpiaparabrisas (no se ven desde fuera)
+        const drop = []; g.scene.traverse((o) => { if (/^Interior|Wiper/.test(o.name) && !/SteeringCylinder/.test(o.name)) drop.push(o) })
+        for (const o of drop) o.removeFromParent()
+      }
+      return g
+    })
   }
-  return _gltfP
+  return _gltfP[k]
+}
+function fixMat(m0, paint, meshName, shared) {
+  const key = m0.uuid + '|' + (paint || '')
+  if (shared && _matCache.has(key)) return _matCache.get(key)
+  const m = m0.clone()
+  if (m.transmission > 0) { m.transmission = 0; m.transparent = true; m.opacity = 0.45; m.roughness = 0.05 }
+  if (paint && /color1|paint/i.test(m.name) && !/interior|seat/i.test(meshName)) m.color.set(paint)
+  if (shared) _matCache.set(key, m)
+  return m
 }
 
 /** CC0 Poly Haven HDRI → PMREM, used only for the realistic car's reflections (day). */
@@ -42,19 +59,15 @@ export function setRealCarEnv(night) {
  * Replace the procedural body + wheels of a Car with the GLB model.
  * Physics untouched. Resolves false (and leaves the old car) on any error.
  */
-export async function applyRealCar(car, { paint, night } = {}) {
+export async function applyRealCar(car, { paint, night, lod = false } = {}) {
   try {
-    const gltf = await loadGltf()
+    const gltf = await loadGltf(lod)
     if (car._disposed || !car.mesh?.parent) return false
     const src = gltf.scene.clone(true)
     src.traverse((o) => {
       if (!o.isMesh) return
       o.castShadow = true; o.receiveShadow = false
-      o.material = [].concat(o.material).map((m) => m.clone())
-      for (const m of o.material) {
-        if (m.transmission > 0) { m.transmission = 0; m.transparent = true; m.opacity = 0.45; m.roughness = 0.05 }
-        if (paint && /color1|paint/i.test(m.name) && !/interior|seat/i.test(o.name)) m.color.set(paint)
-      }
+      o.material = [].concat(o.material).map((m) => fixMat(m, paint, o.name, lod))
       if (o.material.length === 1) o.material = o.material[0]
     })
     const wheelNames = ['WheelFrontL', 'WheelFrontR', 'WheelRearL', 'WheelRearR']

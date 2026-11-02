@@ -283,7 +283,7 @@ export class Car {
       this.wheelMeshes.push(m)
     }
     // realista: modelo GLB para el coche del jugador (el clásico queda de reserva)
-    if (!opts.lite && realCarsEnabled()) applyRealCar(this, { paint: this.cfg.paint, night: this._night !== false })
+    if (realCarsEnabled()) applyRealCar(this, { paint: this.cfg.paint, night: this._night !== false, lod: !!opts.lite })
 
     this.maxSteer = 0.55
     this.maxForce = 3600 * this.model.stats.accel
