@@ -319,7 +319,7 @@ export class Game {
     const w = window.innerWidth, h = window.innerHeight, key = w + 'x' + h + '@' + this.renderer.getPixelRatio()
     if (key !== this._composerSize) { this._composerSize = key; this.composer.setPixelRatio(this.renderer.getPixelRatio()); this.composer.setSize(w, h) }
     const night = this.timeOfDay !== 'day'
-    this.bloomPass.strength = night ? 0.55 : 0.22
+    this.bloomPass.strength = night ? (this.cameraMode === 'hood' ? 0.3 : 0.55) : 0.22
     this.bloomPass.threshold = night ? 0.75 : 0.92
     this.composer.render()
   }
@@ -790,21 +790,38 @@ export class Game {
 
   _updateCamera() {
     if (!this.car) return
-    const pos = this.car.getPosition()
-    const q = this.car.getQuaternion()
+    const pos = this.car.mesh.position // pose interpolada (ver Car.update)
+    const q = this.car.mesh.quaternion
     const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(q)
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q)
 
     if (this.cameraMode === 'hood') {
-      // Hood view: on the hood looking forward, hood/scanner visible at bottom
-      const hoodPos = new THREE.Vector3(0, 0.55, 0.85).applyQuaternion(q).add(pos)
-      const look = hoodPos.clone().add(forward.clone().multiplyScalar(18)).add(up.clone().multiplyScalar(0.2))
+      // capo: cámara sobre el capó del modelo realista (fuera del parabrisas), pose interpolada y
+      // cabeceo/balanceo/rebote suavizados con muelles críticamente amortiguados; el giro (yaw) va directo.
+      const real = !!this.car.realModel
+      const b = this.car.chassisBody, ip = b.interpolatedPosition, iq = b.interpolatedQuaternion
+      const cq = new THREE.Quaternion(iq.x, iq.y, iq.z, iq.w)
+      const e = new THREE.Euler().setFromQuaternion(cq, 'YXZ')
+      const h = this._hood || (this._hood = { pitch: e.x, roll: e.z, y: ip.y, vp: 0, vr: 0, vy: 0, t: performance.now() })
+      const now = performance.now(), dt = Math.min(0.05, Math.max(0.001, (now - h.t) / 1000)); h.t = now
+      const spring = (x, v, target, w) => { const a = w * w * (target - x) - 2 * w * v; v += a * dt; return [x + v * dt, v] }
+      ;[h.pitch, h.vp] = spring(h.pitch, h.vp, e.x * 0.6, 9)
+      ;[h.roll, h.vr] = spring(h.roll, h.vr, e.z * 0.4, 9)
+      ;[h.y, h.vy] = spring(h.y, h.vy, ip.y, 14)
+      if (Math.abs(h.y - ip.y) > 1.5) { h.y = ip.y; h.vy = 0 } // recolocado / teletransporte
+      const sq = new THREE.Quaternion().setFromEuler(new THREE.Euler(h.pitch, e.y, h.roll, 'YXZ'))
+      const off = real ? new THREE.Vector3(0, 0.44, 1.2) : new THREE.Vector3(0, 0.55, 0.85)
+      const hoodPos = off.applyQuaternion(sq).add(new THREE.Vector3(ip.x, h.y, ip.z))
       this._hideWindshield(true)
-      this.camera.position.lerp(hoodPos, 0.35)
-      this.camera.up.copy(up)
-      this.camera.lookAt(look)
-      this.camera.fov = 72
+      this.camera.position.copy(hoodPos)
+      this.camera.quaternion.copy(sq)
+      this.camera.rotateX(0.06) // mirar un poco hacia abajo para ver la carretera y el capó
+      this.camera.rotateY(Math.PI) // la cámara mira por -Z; el coche avanza por +Z
+      this.camera.fov = 70
+      this.camera.near = 0.05
     } else {
+      this._hood = null
+      this.camera.near = 0.1
       const back = forward.clone().multiplyScalar(-8).add(up.clone().multiplyScalar(3.2))
       const chasePos = new THREE.Vector3(pos.x, pos.y, pos.z).add(back)
       const look = new THREE.Vector3(pos.x, pos.y + 0.8, pos.z).add(forward.clone().multiplyScalar(6))
