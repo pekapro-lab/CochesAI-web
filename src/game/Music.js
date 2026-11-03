@@ -4,7 +4,8 @@
  * decodable, MP3 fallback (iOS Safari). Own gain below the engine; separate on/off
  * (localStorage 'cochesai-music') independent of the global mute.
  */
-const LOOPS = { menu_garaje: 71.1111, carrera_norte: 120.0, carrera_costa: 130.9091, carrera_bosque: 125.2174, carrera_sierra: 115.2 }
+// Versión Suno (Peka Música). Sintetizada en music/sintetizada/ (71.1111/120/130.9091/125.2174/115.2)
+const LOOPS = { menu_garaje: 70.9994, carrera_norte: 146.9083, carrera_costa: 143.3653, carrera_bosque: 149.8376, carrera_sierra: 153.6061 }
 const SHORT = ['cuenta_atras', 'ultima_vuelta', 'victoria', 'fin_carrera', 'ui_click', 'ui_confirmar']
 const MUSIC_VOL = 0.42 // loops at -17 LUFS sit ~6 dB under the engine already
 const MP3_DELAY = 1105 / 44100
