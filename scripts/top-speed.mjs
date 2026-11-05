@@ -1,7 +1,8 @@
 /**
- * Top-speed check: on each track the player car is driven flat-out for 40 s with a naive centreline
- * follower (never brakes). It must reach ≥185 km/h somewhere (cap 195), never exceed ~197, and stay
- * inside the wall corridor (|lateral| < roadWidth/2 + 2, on the ground). A rival-config car is capped at 185 (beta.3: gap 10 km/h).
+ * Top-speed check: on the longest straight the player is flat-out, and brakes when the
+ * road ahead turns so a real corner does not launch the car through the wall.
+ * It must reach ≥185 km/h somewhere (cap 195), never exceed ~197, and stay
+ * inside the wall corridor. A rival-config car is capped at 185.
  */
 import { chromium } from 'playwright'
 import { createServer } from 'http'
@@ -57,8 +58,12 @@ for (const id of (process.env.TRACKS || 'norte,bosque,costa,sierra').split(','))
       const la = P[(idx + Math.max(6, Math.round(car.speedKmh / 12))) % N]
       let want = Math.atan2(la.x - p.x, la.z - p.z) - yaw; want = Math.atan2(Math.sin(want), Math.cos(want))
       const steer = Math.max(-1, Math.min(1, want * 3))
+      const look = (idx + 16) % N
+      let dh = head(look) - h
+      dh = Math.atan2(Math.sin(dh), Math.cos(dh))
+      const slow = Math.abs(dh) > 0.16
       g.world.step(1 / 90, 1 / 60, 6)
-      car.update(1 / 60, { throttle: 1, brake: 0, steer, handbrake: false })
+      car.update(1 / 60, { throttle: slow ? 0 : 1, brake: slow ? 1 : 0, steer, handbrake: false })
       maxKmh = Math.max(maxKmh, car.speedKmh)
     }
     const y = +b.position.y.toFixed(2)

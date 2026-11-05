@@ -141,5 +141,5 @@ export class AIDriver {
     return false
   }
 }
-AIDriver.A_LAT = 9.2
-AIDriver.A_BRAKE = 7.2
+AIDriver.A_LAT = 7.2
+AIDriver.A_BRAKE = 5.8

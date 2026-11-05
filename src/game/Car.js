@@ -152,8 +152,8 @@ export class Car {
     this.chassisBody.addShape(chassisShape, new CANNON.Vec3(0, 0.22, 0))
     this.chassisBody.position.set(spawn.x, spawn.y + 0.75, spawn.z)
     this.chassisBody.quaternion.setFromEuler(0, spawn.yaw || 0, 0)
-    this.chassisBody.angularDamping = 0.62
-    this.chassisBody.linearDamping = 0.06
+    this.chassisBody.angularDamping = 0.42
+    this.chassisBody.linearDamping = 0.07
     this.chassisBody.allowSleep = false
     this.chassisBody.collisionFilterGroup = GROUP_CHASSIS
     this.chassisBody.collisionFilterMask = GROUP_GROUND | GROUP_BARRIER | (opts.collideCars ? GROUP_CHASSIS : 0)
@@ -175,13 +175,13 @@ export class Car {
       suspensionStiffness: this.model.stats.susp,
       suspensionRestLength: 0.32,
       frictionSlip: 2.6,
-      dampingRelaxation: 2.5,
-      dampingCompression: 3.8,
+      dampingRelaxation: 3.1,
+      dampingCompression: 4.6,
       maxSuspensionForce: 80000,
-      rollInfluence: 0.1,
+      rollInfluence: 0.18,
       axleLocal: new CANNON.Vec3(-1, 0, 0),
       chassisConnectionPointLocal: new CANNON.Vec3(0, 0, 0),
-      maxSuspensionTravel: 0.35,
+      maxSuspensionTravel: 0.22,
       customSlidingRotationalSpeed: -28,
       useCustomSlidingRotationalSpeed: true,
       // Wheel rays only hit the ground plane — never barriers (prevents sudden stop).
@@ -199,7 +199,7 @@ export class Car {
 
     for (let i = 0; i < 4; i++) {
       const opts = { ...wheelOptions, chassisConnectionPointLocal: positions[i] }
-      opts.frictionSlip = (i < 2 ? 2.9 : 2.4) * this.model.stats.grip
+      opts.frictionSlip = (i < 2 ? 2.55 : 2.15) * this.model.stats.grip
       this.vehicle.addWheel(opts)
     }
     this.vehicle.addToWorld(world)
@@ -286,11 +286,11 @@ export class Car {
     // realista: modelo GLB para el coche del jugador (el clásico queda de reserva)
     if (realCarsEnabled()) applyRealCar(this, { paint: this.cfg.paint, night: this._night !== false, lod: !!opts.lite })
 
-    this.maxSteer = 0.55
-    this.maxForce = 3600 * this.model.stats.accel
+    this.maxSteer = 0.46
+    this.maxForce = 3300 * this.model.stats.accel
     this.topSpeedKmh = opts.topSpeedKmh || RIVAL_TOP_SPEED_KMH
     this.highSpeedBoost = opts.highSpeedBoost || 0
-    this.brakeForce = 52
+    this.brakeForce = 40
     this._steerCurrent = 0
     this.gear = 'D'
     this.signedSpeedKmh = 0
@@ -500,8 +500,8 @@ export class Car {
     }
 
     const speedFactor = Math.min(1, this.speedKmh / 150) + Math.max(0, Math.min(0.25, (this.speedKmh - 150) / 180))
-    const targetSteer = controls.steer * this.maxSteer * (1 - speedFactor * 0.65)
-    const steerLerp = Math.min(1, dt * 9)
+    const targetSteer = controls.steer * this.maxSteer * (1 - speedFactor * 0.78)
+    const steerLerp = Math.min(1, dt * 4.2)
     this._steerCurrent += (targetSteer - this._steerCurrent) * steerLerp
     const steerVal = this._steerCurrent
 
@@ -562,7 +562,7 @@ export class Car {
       if (onGround >= 1) {
         const fwd = new CANNON.Vec3()
         this.chassisBody.vectorToWorldFrame(new CANNON.Vec3(0, 0, 1), fwd)
-        const boost = (12 - this.speedKmh) * 400
+        const boost = (12 - this.speedKmh) * 120
         this.chassisBody.applyForce(fwd.scale(boost, fwd))
       }
     }
