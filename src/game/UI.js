@@ -145,7 +145,7 @@ export class UI {
         <div class="stick" id="stick" aria-label="Dirección"><div class="stick-knob" id="stick-knob"></div></div>
         <button class="touch-btn accel" data-act="throttle" type="button">▲</button>
         <button class="touch-btn brake" data-act="brake" type="button">▼</button>
-        <button class="touch-btn handbrake" data-act="handbrake" type="button">FRENO DE MANO</button>
+        <button class="touch-btn handbrake" data-act="handbrake" type="button" aria-label="Freno de mano">MANO</button>
       </div>
     `
     root.appendChild(this.el)

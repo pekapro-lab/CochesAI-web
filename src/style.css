@@ -520,3 +520,79 @@ canvas.game-canvas {
 .speedlines { position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0;
   background: repeating-conic-gradient(from 0deg at 50% 55%, rgba(255,255,255,0.0) 0deg 2.2deg, rgba(255,255,255,0.55) 2.4deg 2.6deg, rgba(255,255,255,0) 2.8deg 7deg);
   -webkit-mask-image: radial-gradient(ellipse at 50% 55%, transparent 38%, #000 80%); mask-image: radial-gradient(ellipse at 50% 55%, transparent 38%, #000 80%); }
+
+/* HUD móvil 2.3.1: velocímetro, pedales y botones en los bordes, el coche en el centro. */
+@media (pointer: coarse) {
+  .hud-top { flex-wrap: nowrap; gap: 6px; align-items: stretch; }
+  .hud-pill { min-width: 0; flex: 1 1 0; padding: 4px 6px; }
+  .hud-pill .label { font-size: 0.58rem; letter-spacing: 0.04em; }
+  .hud-pill .value { white-space: nowrap; font-size: clamp(0.78rem, 3.2vw, 1.02rem); }
+}
+
+@media (orientation: portrait) {
+  .touch-device .standings { top: max(66px, calc(env(safe-area-inset-top) + 60px)); max-width: 128px; }
+  .touch-device .hud-tools {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100px;
+    gap: 6px;
+    top: max(66px, calc(env(safe-area-inset-top) + 60px));
+    right: max(8px, env(safe-area-inset-right));
+    left: auto;
+    transform: none;
+  }
+  .touch-device .stick { width: 124px; height: 124px; }
+  .touch-device .stick-knob { width: 52px; height: 52px; }
+  .touch .handbrake {
+    left: auto;
+    transform: none;
+    right: max(90px, calc(env(safe-area-inset-right) + 76px));
+    bottom: max(22px, env(safe-area-inset-bottom));
+    width: auto;
+    height: 44px;
+    padding: 0 12px;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+  }
+  .touch-device .minimap {
+    width: 84px;
+    height: 84px;
+    left: max(12px, env(safe-area-inset-left));
+    right: auto;
+    top: auto;
+    bottom: max(172px, calc(env(safe-area-inset-bottom) + 158px));
+  }
+  .touch-device .speedo {
+    left: auto;
+    transform: none;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(186px, calc(env(safe-area-inset-bottom) + 172px));
+    padding: 3px 10px 4px;
+  }
+  .touch-device .speedo .kmh { font-size: 1.4rem; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .touch .handbrake {
+    left: auto;
+    transform: none;
+    right: max(92px, calc(env(safe-area-inset-right) + 78px));
+    bottom: max(16px, env(safe-area-inset-bottom));
+    width: auto;
+    height: 44px;
+    padding: 0 12px;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+  }
+  .touch-device .speedo {
+    left: auto;
+    transform: none;
+    right: max(92px, calc(env(safe-area-inset-right) + 78px));
+    bottom: max(70px, calc(env(safe-area-inset-bottom) + 64px));
+    padding: 2px 10px 3px;
+  }
+  .touch-device .speedo .kmh { font-size: 1.3rem; }
+  .touch-device .speedo .gear { font-size: 0.7rem; margin-bottom: 0; }
+  .touch-device .speedo .unit { font-size: 0.6rem; }
+}
+
