@@ -199,7 +199,8 @@ export const RaceMixin = {
     const path = this.track.path, N = path.length
     const i = (r.idx + N) % N
     const p = this.rl.line[i], q = this.rl.line[(i + 2) % N]
-    r.car.teleport(p.x, 0.72, p.z, Math.atan2(q.x - p.x, q.z - p.z))
+    const roadY = path[i].y || 0
+    r.car.teleport(p.x, roadY + 0.72, p.z, Math.atan2(q.x - p.x, q.z - p.z))
     r.driver && (r.driver.backOut = 0, r.driver.stuck = 0, r.driver._hist = [])
     r.resets = (r.resets || 0) + 1
     r.ghostUntil = this._raceTime() + 3

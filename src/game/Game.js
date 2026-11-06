@@ -573,7 +573,7 @@ export class Game {
     }
   }
 
-  _placeOnPath(index, y = 0.72) {
+  _placeOnPath(index) {
     const path = this.track.path
     const i = ((index % path.length) + path.length) % path.length
     const p = path[i]
@@ -583,8 +583,9 @@ export class Game {
     const fx = path[j].x - p.x
     const fz = path[j].z - p.z
     const fl = Math.hypot(fx, fz) || 1
-    // side = left of forward; keep on centerline (no side offset)
-    this.car.teleport(p.x - (fx / fl) * 0.5, y, p.z - (fz / fl) * 0.5, yaw)
+    // 0.72 is the chassis height above the centreline (ride ~0.63 on asphalt at y+0.04).
+    // It used to be an absolute world height, which dropped the car under any hill.
+    this.car.teleport(p.x - (fx / fl) * 0.5, (p.y || 0) + 0.72, p.z - (fz / fl) * 0.5, yaw)
   }
 
   recoverCar() {
@@ -593,7 +594,7 @@ export class Game {
     const idx = Number.isFinite(this._checkpointIndex)
       ? this._checkpointIndex
       : this._nearestPathIndex(this.car.getPosition())
-    this._placeOnPath(idx, 0.72)
+    this._placeOnPath(idx)
     this._stuckTime = 0
     this._airTime = 0
     this._lastMovePos = null
@@ -628,11 +629,13 @@ export class Game {
     const body = this.car.chassisBody
     this._containCar(body)
     const wheels = this.car.wheelsOnGround()
+    const roadY = this._roadY || 0
 
-    // Soft catch: lift onto the plane WITHOUT wiping yaw or forward speed.
+    // Soft catch: lift onto the road WITHOUT wiping yaw or forward speed.
     // Snapping quaternion here used to kill momentum at the first curve.
-    if (wheels === 0 && pos.y < 0.45) {
-      body.position.y = 0.75
+    // Offsets stay the same as the flat-track catch (0.45 / 0.75); roadY is 0 there.
+    if (wheels === 0 && pos.y < roadY + 0.45) {
+      body.position.y = roadY + 0.75
       if (body.velocity.y < 0) body.velocity.y = 0
       body.angularVelocity.x *= 0.5
       body.angularVelocity.z *= 0.5
@@ -668,8 +671,9 @@ export class Game {
     if (wheels === 0) this._airTime = (this._airTime || 0) + dt
     else this._airTime = 0
 
-    // Mild downforce while airborne so rays reconnect
-    if (wheels === 0 && pos.y > 0.55 && body.velocity.y > -2) {
+    // Mild downforce while airborne so rays reconnect. Skip a chassis that has
+    // already fallen through the road (that case is a lift, not a push down).
+    if (wheels === 0 && pos.y > roadY + 0.55 && body.velocity.y > -2) {
       body.applyForce(new CANNON.Vec3(0, -7000, 0))
     }
 
@@ -683,7 +687,7 @@ export class Game {
         const dx = center.x - pos.x
         const dz = center.z - pos.z
         const len = Math.hypot(dx, dz) || 1
-        if (pos.y < 0.55) body.position.y = 0.75
+        if (pos.y < roadY + 0.55) body.position.y = roadY + 0.75
         // Pull toward centerline; don't fight forward/reverse engine force with huge Y pops
         body.applyForce(
           new CANNON.Vec3((dx / len) * 3500 * dt, 2500 * dt, (dz / len) * 3500 * dt),
@@ -724,8 +728,15 @@ export class Game {
       const d = (px - x) ** 2 + (pz - z) ** 2
       if (d < best) { best = d; cx = x; cz = z; cy = (p.y || 0) + ((q.y || 0) - (p.y || 0)) * u }
     }
+    this._roadY = cy
     const d = Math.sqrt(best)
     const limit = half + 1.4
+    // Fallen through the hill: the centreline is still "inside" laterally, so the
+    // old guard returned and left the car in the void under the asphalt.
+    if (body.position.y < cy + 0.15) {
+      body.position.y = cy + 0.72
+      if (body.velocity.y < 0) body.velocity.y = 0
+    }
     if (d <= limit && body.position.y < cy + 2.6) return
     const nx = (px - cx) / (d || 1), nz = (pz - cz) / (d || 1)
     if (d > limit) {

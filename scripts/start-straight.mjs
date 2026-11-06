@@ -60,6 +60,34 @@ for (const id of (process.env.TRACKS || 'norte,bosque,costa,sierra').split(','))
   const ok = Math.abs(r.spawnYawErrDeg) < 8 && r.maxYawDeg < 4 && r.maxLat < 0.8 && r.fwd > 5
   if (!ok) fail = true
   console.log(ok ? 'OK  ' : 'FAIL', JSON.stringify(r))
+  const crest = await page.evaluate((id) => {
+    const g = window.__PEKA_R__
+    g.startTrack(id); g.state = 'racing'; g.ui.hideCountdown(); cancelAnimationFrame(g._raf)
+    const path = g.track.path
+    let ci = 0
+    for (let i = 1; i < path.length; i++) if ((path[i].y || 0) > (path[ci].y || 0)) ci = i
+    g._checkpointIndex = ci
+    const roadY = path[ci].y || 0
+    g.recoverCar()
+    const dt = 1 / 60
+    const ctl = { throttle: 0, brake: 1, steer: 0, handbrake: true }
+    for (let i = 0; i < 90; i++) {
+      g.world.step(1 / 90, dt, 6); g.car.update(dt, ctl); g._guardPhysics(dt, ctl)
+    }
+    const p = g.car.getPosition()
+    let best = Infinity
+    for (let j = 0; j < path.length; j++) {
+      const a = path[j], b = path[(j + 1) % path.length]
+      const ex = b.x - a.x, ez = b.z - a.z, L = ex * ex + ez * ez || 1
+      const u = Math.max(0, Math.min(1, ((p.x - a.x) * ex + (p.z - a.z) * ez) / L))
+      best = Math.min(best, Math.hypot(p.x - a.x - ex * u, p.z - a.z - ez * u))
+    }
+    const y = p.y
+    return { id, roadY: +roadY.toFixed(2), y: +y.toFixed(2), dy: +(y - roadY).toFixed(2), lat: +best.toFixed(2), w: g.car.wheelsOnGround() }
+  }, id)
+  const crestOk = crest.w >= 3 && crest.lat < 2 && crest.dy > 0.4 && crest.dy < 1.2
+  if (!crestOk) fail = true
+  console.log(crestOk ? 'OK  ' : 'FAIL', 'crest-recover', JSON.stringify(crest))
 }
 // --- Engine audio must go silent after the finish and in the menu ---
 const audio = await page.evaluate(async () => {
