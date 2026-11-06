@@ -15,6 +15,59 @@ function catmullRom(p0, p1, p2, p3, t) {
 }
 
 
+function smoothstep(t) {
+  t = Math.max(0, Math.min(1, t))
+  return t * t * (3 - 2 * t)
+}
+
+/** Closed-loop height. Start/finish stays at 0 so the grid does not spawn on a ramp. */
+function elevationAt(id, t) {
+  if (id === 'sierra') {
+    if (t < 0.1) return 0
+    if (t < 0.38) return 15 * smoothstep((t - 0.1) / 0.28)
+    if (t < 0.5) return 15
+    if (t < 0.78) return 15 * (1 - smoothstep((t - 0.5) / 0.28))
+    return 0
+  }
+  if (id === 'norte') {
+    if (t < 0.2) return 0
+    if (t < 0.38) return 7 * smoothstep((t - 0.2) / 0.18)
+    if (t < 0.52) return 7
+    if (t < 0.72) return 7 * (1 - smoothstep((t - 0.52) / 0.2))
+    return 0
+  }
+  if (id === 'bosque') {
+    const s = Math.sin(t * Math.PI * 2)
+    const s2 = Math.sin(t * Math.PI * 4)
+    return Math.max(0, 4.8 * s + 1.6 * s2)
+  }
+  if (id === 'costa') {
+    if (t < 0.36) return 0
+    if (t < 0.52) return 5 * smoothstep((t - 0.36) / 0.16)
+    if (t < 0.64) return 5
+    if (t < 0.82) return 5 * (1 - smoothstep((t - 0.64) / 0.18))
+    return 0
+  }
+  return 0
+}
+
+function applyElevation(path, id) {
+  const n = path.length
+  const acc = new Float64Array(n)
+  for (let i = 1; i < n; i++) acc[i] = acc[i - 1] + path[i].distanceTo(path[i - 1])
+  const total = acc[n - 1] + path[0].distanceTo(path[n - 1]) || 1
+  for (let i = 0; i < n; i++) path[i].y = elevationAt(id, acc[i] / total)
+  for (let pass = 0; pass < 2; pass++) {
+    const ys = path.map((p) => p.y)
+    for (let i = 0; i < n; i++) path[i].y = (ys[(i - 1 + n) % n] + ys[i] * 2 + ys[(i + 1) % n]) / 4
+  }
+}
+
+function slopeEuler(dx, dy, dz) {
+  const horiz = Math.hypot(dx, dz) || 0.001
+  return new THREE.Euler(-Math.atan2(dy, horiz), Math.atan2(dx, dz), 0, 'YXZ')
+}
+
 function lightenHex(hex, amount) {
   const r = (hex >> 16) & 255
   const g = (hex >> 8) & 255
@@ -43,6 +96,7 @@ export function sampleLoop(controlPoints, samplesPerSeg = 12) {
 
 export function buildTrack(world, scene, def) {
   const path = sampleLoop(def.points, def.samplesPerSeg || 14)
+  applyElevation(path, def.id)
   const roadWidth = def.roadWidth || 12
   const group = new THREE.Group()
   const bodies = []
@@ -68,7 +122,7 @@ export function buildTrack(world, scene, def) {
     shape: new CANNON.Box(new CANNON.Vec3(gs, 1, gs)),
     material: groundPhysMat,
   })
-  groundBody.position.set(0, -1, 0)
+  groundBody.position.set(0, -1.8, 0)
   groundBody.collisionFilterGroup = GROUP_GROUND
   groundBody.collisionFilterMask = GROUP_CHASSIS
 
@@ -134,8 +188,8 @@ export function buildTrack(world, scene, def) {
     const side = new THREE.Vector3(-dir.z, 0, dir.x).normalize()
     const L = a.clone().addScaledVector(side, half)
     const R = a.clone().addScaledVector(side, -half)
-    L.y = 0.02
-    R.y = 0.02
+    L.y = a.y + 0.04
+    R.y = a.y + 0.04
     leftEdge.push(L)
     rightEdge.push(R)
     centerline.push(a.clone())
@@ -182,6 +236,32 @@ export function buildTrack(world, scene, def) {
   road.receiveShadow = true
   group.add(road)
 
+  // Horizontal slabs, stepped by at most 3 cm, so the climb is solid and level
+  // from curb to curb. A single pitched box left holes where two slopes met.
+  const roadThick = 1.4
+  const roadWide = roadWidth + 2.2
+  for (let i = 0; i < path.length; i++) {
+    const a = path[i]
+    const b = path[(i + 1) % path.length]
+    const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z
+    const horiz = Math.hypot(dx, dz)
+    if (horiz < 0.05) continue
+    const steps = Math.max(1, Math.ceil(Math.abs(dy) / 0.03))
+    const yaw = Math.atan2(dx, dz)
+    for (let s = 0; s < steps; s++) {
+      const t = (s + 0.5) / steps
+      const y = a.y + dy * t + 0.04
+      const body = new CANNON.Body({ mass: 0, material: groundPhysMat })
+      body.addShape(new CANNON.Box(new CANNON.Vec3(roadWide / 2, roadThick / 2, horiz / steps / 2 + 0.03)))
+      body.position.set(a.x + dx * t, y - roadThick / 2, a.z + dz * t)
+      body.quaternion.setFromEuler(0, yaw, 0)
+      body.collisionFilterGroup = GROUP_GROUND
+      body.collisionFilterMask = GROUP_CHASSIS
+      world.addBody(body)
+      bodies.push(body)
+    }
+  }
+
   // Soft shoulder / runoff tint beside road (visual only)
   const shoulderMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
@@ -198,10 +278,12 @@ export function buildTrack(world, scene, def) {
     const yaw = Math.atan2(dir.x, dir.z)
     const side = new THREE.Vector3(-dir.z, 0, dir.x)
     for (const sign of [1, -1]) {
-      const sh = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.02, len * 1.9), shoulderMat)
+      const sh = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, len * 1.05), shoulderMat)
       const pos = a.clone().addScaledVector(side, sign * (half + 1.4))
-      sh.position.set(pos.x, 0.015, pos.z)
-      sh.rotation.y = yaw
+      const bx = b.x + side.x * sign * (half + 1.4)
+      const bz = b.z + side.z * sign * (half + 1.4)
+      sh.position.set((pos.x + bx) / 2, (a.y + b.y) / 2 + 0.05, (pos.z + bz) / 2)
+      sh.rotation.copy(slopeEuler(bx - pos.x, b.y - a.y, bz - pos.z))
       sh.receiveShadow = true
       group.add(sh)
     }
@@ -241,8 +323,10 @@ export function buildTrack(world, scene, def) {
     for (const [sign, mat] of [[1, curbMatL], [-1, curbMatR]]) {
       const curb = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.12, Math.max(0.4, len * 0.98)), mat)
       const pos = a.clone().addScaledVector(side, sign * (half + 0.15))
-      curb.position.set(pos.x, 0.08, pos.z)
-      curb.rotation.y = yaw
+      const bx = b.x + side.x * sign * (half + 0.15)
+      const bz = b.z + side.z * sign * (half + 0.15)
+      curb.position.set((pos.x + bx) / 2, (a.y + b.y) / 2 + 0.08, (pos.z + bz) / 2)
+      curb.rotation.copy(slopeEuler(bx - pos.x, b.y - a.y, bz - pos.z))
       group.add(curb)
     }
 
@@ -274,7 +358,8 @@ export function buildTrack(world, scene, def) {
       while (wallLen > 0.4 && barrierIntrudes(pos, yaw, wallThick, wallLen)) wallLen *= 0.85
       if (wallLen <= 0.4) continue
       const wall = new THREE.Mesh(new THREE.BoxGeometry(wallThick, wallH, wallLen), barrierMat)
-      wall.position.set(pos.x, wallH / 2, pos.z)
+      const roadY = (p0.y + p1.y) / 2
+      wall.position.set(pos.x, roadY + wallH / 2, pos.z)
       wall.rotation.y = yaw
       wall.castShadow = true
       wall.receiveShadow = true
@@ -290,7 +375,7 @@ export function buildTrack(world, scene, def) {
       if (barrierIntrudes(cpos, yaw, colThick, wallLen)) { colThick = wallThick; cpos = pos }
       const body = new CANNON.Body({ mass: 0, material: barrierMatPhys })
       body.addShape(new CANNON.Box(new CANNON.Vec3(colThick / 2, colH / 2, wallLen / 2)))
-      body.position.set(cpos.x, colH / 2, cpos.z)
+      body.position.set(cpos.x, roadY - 0.2 + colH / 2, cpos.z)
       body.quaternion.setFromEuler(0, yaw, 0)
       body.collisionFilterGroup = GROUP_BARRIER
       body.collisionFilterMask = GROUP_CHASSIS
@@ -305,7 +390,7 @@ export function buildTrack(world, scene, def) {
   const start = path[0]
   const next = path[1]
   const sdir = new THREE.Vector3().subVectors(next, start).normalize()
-  finish.position.set(start.x, 0.05, start.z)
+  finish.position.set(start.x, start.y + 0.08, start.z)
   finish.rotation.y = Math.atan2(sdir.x, sdir.z)
   group.add(finish)
 
@@ -317,7 +402,7 @@ export function buildTrack(world, scene, def) {
     )
     const side = new THREE.Vector3(-sdir.z, 0, sdir.x)
     const p = start.clone().addScaledVector(side, sign * (half + 0.6))
-    post.position.set(p.x, 1.6, p.z)
+    post.position.set(p.x, start.y + 1.6, p.z)
     group.add(post)
   }
 
@@ -365,7 +450,7 @@ export function buildTrack(world, scene, def) {
   const spawnYaw = Math.atan2(sdir.x, sdir.z)
   const spawn = {
     x: start.x - sdir.x * 4,
-    y: 0.5,
+    y: (start.y || 0) + 0.55,
     z: start.z - sdir.z * 4,
     yaw: spawnYaw,
   }
@@ -403,12 +488,12 @@ function addGrandstands(group, path, half, def) {
     const side = new THREE.Vector3(-dir.z, 0, dir.x)
     const base = a.clone().addScaledVector(side, half + 8)
     const stand = new THREE.Mesh(new THREE.BoxGeometry(18, 4, 6), mat)
-    stand.position.set(base.x, 2, base.z)
+    stand.position.set(base.x, a.y + 2, base.z)
     stand.rotation.y = Math.atan2(dir.x, dir.z)
     stand.castShadow = true
     group.add(stand)
     const seats = new THREE.Mesh(new THREE.BoxGeometry(17, 0.4, 5), seat)
-    seats.position.set(base.x, 3.2, base.z)
+    seats.position.set(base.x, a.y + 3.2, base.z)
     seats.rotation.y = Math.atan2(dir.x, dir.z)
     group.add(seats)
   }
@@ -488,13 +573,13 @@ function addCoastScenery(group, path, half, def) {
       const p = a.clone().addScaledVector(side, sign * dist)
       const lean = sign * 0.15
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.22, 5.2, 6), trunkMat)
-      trunk.position.set(p.x, 2.5, p.z)
+      trunk.position.set(p.x, p.y + 2.5, p.z)
       trunk.rotation.z = lean
       trunk.castShadow = true
       group.add(trunk)
       for (let k = 0; k < 7; k++) {
         const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.55, 3.2, 4, 1, true), leafMat)
-        leaf.position.set(p.x + lean * 2.0, 4.6, p.z)
+        leaf.position.set(p.x + lean * 2.0, p.y + 4.6, p.z)
         leaf.rotation.y = (k / 7) * Math.PI * 2
         leaf.rotation.x = 1.05
         leaf.castShadow = true
@@ -569,7 +654,7 @@ function addMountainScenery(group, path, half, def) {
     const p = a.clone().addScaledVector(side, sign * (half + 5.5 + (i % 3)))
     const h = 3.5 + (i % 4) * 1.2
     const rock = new THREE.Mesh(new THREE.BoxGeometry(4.2, h, 5.5), cliffMat)
-    rock.position.set(p.x, h / 2, p.z)
+    rock.position.set(p.x, a.y + h / 2, p.z)
     rock.rotation.y = Math.atan2(dir.x, dir.z) + (i % 2) * 0.25
     rock.castShadow = true
     rock.receiveShadow = true
@@ -590,10 +675,10 @@ function addMountainScenery(group, path, half, def) {
     for (const sign of [1, -1]) {
       const p = a.clone().addScaledVector(side, sign * (half + 10 + (i % 5)))
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 2.4, 5), trunkMat)
-      trunk.position.set(p.x, 1.2, p.z)
+      trunk.position.set(p.x, p.y + 1.2, p.z)
       group.add(trunk)
       const leaves = new THREE.Mesh(new THREE.ConeGeometry(1.5, 3.8, 7), leafMat)
-      leaves.position.set(p.x, 3.6, p.z)
+      leaves.position.set(p.x, p.y + 3.6, p.z)
       leaves.castShadow = true
       group.add(leaves)
     }
@@ -613,10 +698,10 @@ function addPines(group, path, half, leafColor = 0x1a3d28) {
       const dist = half + 4 + ((i * 17) % 9)
       const p = a.clone().addScaledVector(side, sign * dist)
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 2.2, 5), trunkMat)
-      trunk.position.set(p.x, 1.1, p.z)
+      trunk.position.set(p.x, p.y + 1.1, p.z)
       group.add(trunk)
       const leaves = new THREE.Mesh(new THREE.ConeGeometry(1.4, 3.4, 7), leafMat)
-      leaves.position.set(p.x, 3.4, p.z)
+      leaves.position.set(p.x, p.y + 3.4, p.z)
       leaves.castShadow = true
       group.add(leaves)
     }
@@ -767,34 +852,35 @@ function addTrackLamps(group, path, half, distToPath, night) {
     const toRoad = new THREE.Vector3(a.x - p.x, 0, a.z - p.z).normalize()
     const H = 6.2
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, H, 6), poleMat)
-    pole.position.set(p.x, H / 2, p.z)
+    const gy = a.y || 0
+    pole.position.set(p.x, gy + H / 2, p.z)
     group.add(pole)
     const armLen = 2.4
     const arm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, armLen), poleMat)
-    arm.position.set(p.x + toRoad.x * armLen / 2, H - 0.05, p.z + toRoad.z * armLen / 2)
+    arm.position.set(p.x + toRoad.x * armLen / 2, gy + H - 0.05, p.z + toRoad.z * armLen / 2)
     arm.rotation.y = Math.atan2(toRoad.x, toRoad.z)
     group.add(arm)
     const hx = p.x + toRoad.x * armLen, hz = p.z + toRoad.z * armLen
     const head = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.14, 0.7), headMat)
-    head.position.set(hx, H - 0.16, hz)
+    head.position.set(hx, gy + H - 0.16, hz)
     head.rotation.y = arm.rotation.y
     group.add(head)
     if (night) {
       const pool = new THREE.Mesh(new THREE.CircleGeometry(8.5, 20), poolMat)
       pool.rotation.x = -Math.PI / 2
-      pool.position.set(hx + toRoad.x * 1.5, 0.045, hz + toRoad.z * 1.5)
+      pool.position.set(hx + toRoad.x * 1.5, gy + 0.08, hz + toRoad.z * 1.5)
       pool.renderOrder = 1
       group.add(pool)
       const streak = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 18), streakMat)
       streak.rotation.order = 'YXZ'
       streak.rotation.set(-Math.PI / 2, Math.atan2(dir.x, dir.z) + Math.PI, 0)
-      streak.position.set(hx + toRoad.x * 0.8, 0.05, hz + toRoad.z * 0.8)
+      streak.position.set(hx + toRoad.x * 0.8, gy + 0.09, hz + toRoad.z * 0.8)
       streak.renderOrder = 1
       group.add(streak)
       // horizontal halo under the head reads as a glowing bulb from the driver's view
       for (const ry of [0, Math.PI / 2]) {
         const halo = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2), haloMat)
-        halo.position.set(hx, H - 0.3, hz)
+        halo.position.set(hx, gy + H - 0.3, hz)
         halo.rotation.y = ry
         halo.renderOrder = 2
         group.add(halo)

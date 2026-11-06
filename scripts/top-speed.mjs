@@ -69,7 +69,7 @@ for (const id of (process.env.TRACKS || 'norte,bosque,costa,sierra').split(','))
     const y = +b.position.y.toFixed(2)
     return { id, y, straightM: Math.round(bestLen), maxKmh: Math.round(maxKmh), maxLat: +maxLat.toFixed(2), halfRoad: W / 2, rivalCaps: [...new Set(others)] }
   }, id)
-  const ok = r.maxLat < r.halfRoad + 2 && r.y > -2 && r.y < 6 && r.maxKmh <= 197 && r.rivalCaps.every((c) => c === 185)
+  const ok = r.maxLat < r.halfRoad + 2 && r.y > -3 && r.y < 28 && r.maxKmh <= 197 && r.rivalCaps.every((c) => c === 185)
   results.push(r)
   console.log(ok ? 'OK  ' : 'FAIL', JSON.stringify(r))
   if (!ok) fail = true

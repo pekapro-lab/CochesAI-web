@@ -715,18 +715,18 @@ export class Game {
     const N = path.length
     const half = (this.track.roadWidth || 12) / 2
     const px = body.position.x, pz = body.position.z
-    let best = Infinity, cx = 0, cz = 0
+    let best = Infinity, cx = 0, cz = 0, cy = 0
     for (let j = 0; j < N; j++) {
       const p = path[j], q = path[(j + 1) % N]
       const ex = q.x - p.x, ez = q.z - p.z, L = ex * ex + ez * ez || 1
       const u = Math.max(0, Math.min(1, ((px - p.x) * ex + (pz - p.z) * ez) / L))
       const x = p.x + ex * u, z = p.z + ez * u
       const d = (px - x) ** 2 + (pz - z) ** 2
-      if (d < best) { best = d; cx = x; cz = z }
+      if (d < best) { best = d; cx = x; cz = z; cy = (p.y || 0) + ((q.y || 0) - (p.y || 0)) * u }
     }
     const d = Math.sqrt(best)
     const limit = half + 1.4
-    if (d <= limit && body.position.y < 2.2) return
+    if (d <= limit && body.position.y < cy + 2.6) return
     const nx = (px - cx) / (d || 1), nz = (pz - cz) / (d || 1)
     if (d > limit) {
       const back = half + 0.4
@@ -735,9 +735,9 @@ export class Game {
       const vOut = body.velocity.x * nx + body.velocity.z * nz
       if (vOut > 0) { body.velocity.x -= nx * vOut; body.velocity.z -= nz * vOut }
     }
-    if (body.position.y > 1.2) {
-      // Launched off a wall corner: bring it back down onto the road
-      body.position.y = Math.min(body.position.y, 1.2)
+    if (body.position.y > cy + 1.8) {
+      // Launched off a wall corner: bring it back down onto the road, not onto y=0
+      body.position.y = cy + 1.15
       if (body.velocity.y > 0) body.velocity.y = 0
     }
   }

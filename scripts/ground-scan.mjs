@@ -30,7 +30,7 @@ for (const id of ['norte', 'bosque', 'costa', 'sierra']) {
     const Vec3 = world.gravity.constructor
     const RR = g.car.vehicle.wheelInfos[0].raycastResult.constructor
     const chassis = g.car.chassisBody
-    let maxStep = 0, intrusions = [], misses = 0, samples = 0
+    let maxStep = 0, worst = null, intrusions = [], misses = 0, samples = 0
     for (let i = 0; i < path.length; i++) {
       const a = path[i], b = path[(i + 1) % path.length]
       const dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1
@@ -48,7 +48,13 @@ for (const id of ['norte', 'bosque', 'costa', 'sierra']) {
           world.raycastClosest(new Vec3(x, 20, z), new Vec3(x, -5, z), { collisionFilterGroup: 4, collisionFilterMask: 1, skipBackfaces: false }, res)
           if (!res.hasHit) { misses++; prev = null; continue }
           const y = res.hitPointWorld.y
-          if (prev !== null) maxStep = Math.max(maxStep, Math.abs(y - prev))
+          if (prev !== null && Math.abs(y - prev) > maxStep) {
+            maxStep = Math.abs(y - prev)
+            if (maxStep > 0.05) {
+              const a = path[i], b = path[(i + 1) % path.length]
+              worst = { i, s, k, y: +y.toFixed(2), prev: +prev.toFixed(2), dy: +((b.y || 0) - (a.y || 0)).toFixed(2), seg: +Math.hypot(b.x - a.x, b.z - a.z).toFixed(1) }
+            }
+          }
           prev = y
           // anything non-ground at car height inside the road?
           const res2 = new RR()
@@ -103,7 +109,22 @@ for (const id of ['norte', 'bosque', 'costa', 'sierra']) {
     // Wall height: every barrier collider must reach the ground and stand >= 2 m tall, or the
     // chassis (bottom ~0.66 m) rides up and over it (v1.0.3 escape: rail was 0.275..0.825 m).
     let lowWalls = 0
-    for (const w of walls) { const hy = w.shapes[0].halfExtents.y; if (w.position.y - hy > 0.05 || w.position.y + hy < 2.0) lowWalls++ }
+    const roadYAt = (x, z) => {
+      let best = Infinity, y = 0
+      for (let j = 0; j < path.length; j++) {
+        const p = path[j], q = path[(j + 1) % path.length]
+        const ex = q.x - p.x, ez = q.z - p.z, L2 = ex * ex + ez * ez || 1
+        const u = Math.max(0, Math.min(1, ((x - p.x) * ex + (z - p.z) * ez) / L2))
+        const d = (x - (p.x + ex * u)) ** 2 + (z - (p.z + ez * u)) ** 2
+        if (d < best) { best = d; y = (p.y || 0) + ((q.y || 0) - (p.y || 0)) * u }
+      }
+      return y
+    }
+    for (const w of walls) {
+      const hy = w.shapes[0].halfExtents.y
+      const ry = roadYAt(w.position.x, w.position.z)
+      if (w.position.y - hy > ry + 0.25 || w.position.y + hy < ry + 1.85) lowWalls++
+    }
     // Enclosure: flood-fill the plane (0.1 m grid) from the start line; walls block. Nothing
     // reachable may be further than the walls' inner face (half + 1.05 m) + 0.1 m, inner or outer side.
     const res = 0.1
@@ -140,10 +161,32 @@ for (const id of ['norte', 'bosque', 'costa', 'sierra']) {
       for (const n of [k + 1, k - 1, k + GW, k - GW]) if (n >= 0 && n < GW * GH && !seen[n] && !block[n]) { seen[n] = 1; stack.push(n) }
     }
     const reach = +(maxReach - half).toFixed(2)
-    return { id, lowWalls, reach, leak, fixed: g.track.sceneryFixed, scenery, gaps, gapSample, boxCount, samples, misses, maxStep: +maxStep.toFixed(3), intrusions: intrusions.filter(Boolean) }
+    let crest = path[0]
+    for (const p of path) if ((p.y || 0) > (crest.y || 0)) crest = p
+    const cres = new RR()
+    world.raycastClosest(new Vec3(crest.x, (crest.y || 0) + 12, crest.z), new Vec3(crest.x, (crest.y || 0) - 6, crest.z), { collisionFilterGroup: 4, collisionFilterMask: 1, skipBackfaces: false }, cres)
+    const cross = []
+    {
+      let ci = 0
+      for (let i = 0; i < path.length; i++) if ((path[i].y || 0) > (path[ci].y || 0)) ci = i
+      const a = path[ci], b = path[(ci + 1) % path.length]
+      const dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1
+      const sx = -dz / l, sz = dx / l
+      for (const k of [-10, -5, 0, 5, 10]) {
+        const o = (k / 10) * (half - 0.3)
+        const x = a.x + sx * o, z = a.z + sz * o
+        const res = new RR()
+        world.raycastClosest(new Vec3(x, (a.y || 0) + 12, z), new Vec3(x, (a.y || 0) - 6, z), { collisionFilterGroup: 4, collisionFilterMask: 1, skipBackfaces: false }, res)
+        cross.push(res.hasHit ? +res.hitPointWorld.y.toFixed(2) : null)
+      }
+    }
+    const crestHit = cres.hasHit ? +cres.hitPointWorld.y.toFixed(2) : null
+    const crestRoad = +((crest.y || 0) + 0.04).toFixed(2)
+    return { id, lowWalls, reach, leak, fixed: g.track.sceneryFixed, scenery, gaps, gapSample, boxCount, samples, misses, maxStep: +maxStep.toFixed(3), worst, intrusions: intrusions.filter(Boolean), crestRoad, crestHit, cross }
   }, id)
   console.log(JSON.stringify(r))
-  if (r.lowWalls || r.leak || r.reach > 1.15 || r.misses || r.maxStep > 0.03 || r.intrusions.length || r.scenery || r.gaps) fail = true
+  const crestOk = r.crestRoad > 2 && r.crestHit != null && Math.abs(r.crestHit - r.crestRoad) < 0.45
+  if (r.lowWalls || r.leak || r.reach > 1.15 || r.misses || r.maxStep > 0.03 || r.intrusions.length || r.scenery || r.gaps || !crestOk) fail = true
 }
 await browser.close(); server.close()
 console.log(fail ? 'GROUND SCAN FAILED' : 'GROUND SCAN PASSED'); if (fail) process.exitCode = 1

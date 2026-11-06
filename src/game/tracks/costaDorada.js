@@ -1,7 +1,7 @@
 export const costaDorada = {
   id: 'costa',
   name: 'Costa Dorada',
-  description: 'Recta de medio kilómetro junto al mar y curvas abiertas.',
+  description: 'Recta plana junto al mar y una duna al volver.',
   laps: 3,
   roadWidth: 14.5,
   samplesPerSeg: 3,

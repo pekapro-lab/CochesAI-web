@@ -13,6 +13,8 @@ window.__COCHES__ = game
 window.__PEKA_R__ = game // same probe name as Peka-R so its physics tests run unchanged
 // eslint-disable-next-line no-undef
 document.documentElement.dataset.version = __COCHES_VERSION__
+const verEl = document.getElementById('menu-ver')
+if (verEl) verEl.textContent = __COCHES_VERSION__
 
 let net = null
 let lastSolo = null

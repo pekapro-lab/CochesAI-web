@@ -1,7 +1,7 @@
 export const circuitoNorte = {
   id: 'norte',
   name: 'Circuito Norte',
-  description: 'Recta larga, chicane y curvas de calle.',
+  description: 'Recta, chicane y una cuesta de siete metros.',
   laps: 3,
   roadWidth: 12.5,
   samplesPerSeg: 2,

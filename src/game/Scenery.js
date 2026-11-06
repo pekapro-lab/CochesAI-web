@@ -78,7 +78,7 @@ export function addForest(group, path, half, distToPath, { day = true, density =
         const dist = half + 6 + row * 7 + r() * 6
         const x = a.x + (-dz / L) * sign * dist + (r() - 0.5) * 3, z = a.z + (dx / L) * sign * dist + (r() - 0.5) * 3
         if (distToPath(x, z) < half + 5) continue
-        spots.push({ x, z, s: 0.75 + r() * 0.6, rot: r() * 6.28, kind: r() })
+        spots.push({ x, z, y: a.y || 0, s: 0.75 + r() * 0.6, rot: r() * 6.28, kind: r() })
       }
     }
   }
@@ -100,7 +100,7 @@ export function addForest(group, path, half, distToPath, { day = true, density =
     im.computeBoundingSphere()
     group.add(im)
   }
-  const at = (s, y, sx, sy) => { q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), s.rot); m4.compose(new THREE.Vector3(s.x, y * s.s, s.z), q, new THREE.Vector3(sx * s.s, sy * s.s, sx * s.s)) }
+  const at = (s, y, sx, sy) => { q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), s.rot); m4.compose(new THREE.Vector3(s.x, (s.y || 0) + y * s.s, s.z), q, new THREE.Vector3(sx * s.s, sy * s.s, sx * s.s)) }
   const trunk = new THREE.CylinderGeometry(0.16, 0.3, 1, 6); trunk.translate(0, 0.5, 0)
   // pines: 3 stacked cones (layered foliage)
   inst(trunk, trunkMat, pines, (s) => at(s, 0, 1, 2.6), false)
@@ -113,7 +113,7 @@ export function addForest(group, path, half, distToPath, { day = true, density =
   const blob = new THREE.IcosahedronGeometry(1.5, 1)
   { const p = blob.attributes.position, rr = rng(13); for (let i = 0; i < p.count; i++) { const k = 0.85 + rr() * 0.3; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k * 0.85, p.getZ(i) * k) } blob.computeVertexNormals() }
   for (const [ox, y, oz, sc] of [[0, 3.4, 0, 1.2], [0.9, 2.8, 0.4, 0.8], [-0.7, 3.0, -0.6, 0.85]]) {
-    inst(blob, leafMat, round, (s) => { q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), s.rot); const off = new THREE.Vector3(ox, 0, oz).applyQuaternion(q).multiplyScalar(s.s); m4.compose(new THREE.Vector3(s.x + off.x, y * s.s, s.z + off.z), q, new THREE.Vector3(sc * s.s, sc * s.s, sc * s.s)) }, true)
+    inst(blob, leafMat, round, (s) => { q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), s.rot); const off = new THREE.Vector3(ox, 0, oz).applyQuaternion(q).multiplyScalar(s.s); m4.compose(new THREE.Vector3(s.x + off.x, (s.y || 0) + y * s.s, s.z + off.z), q, new THREE.Vector3(sc * s.s, sc * s.s, sc * s.s)) }, true)
   }
   // poplar: tall slim ellipsoid
   inst(trunk, trunkMat, poplar, (s) => at(s, 0, 0.8, 1.6), false)
@@ -199,7 +199,7 @@ export function addBillboards(group, path, half, distToPath, { night = false, co
       const lampMat = new THREE.MeshBasicMaterial({ color: 0xfff2cc })
       for (const px of [-W / 3, 0, W / 3]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.3), lampMat); l.position.set(px, Y + H + 0.5, 0.5); board.add(l) }
     }
-    board.position.set(ok.x, 0, ok.z)
+    board.position.set(ok.x, a.y || 0, ok.z)
     // face the track (towards the path point)
     board.rotation.y = Math.atan2(a.x - ok.x, a.z - ok.z)
     board.traverse((o) => { o.userData.noMerge = true; o.userData.scenery = true })

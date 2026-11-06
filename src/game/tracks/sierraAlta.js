@@ -1,7 +1,7 @@
 export const sierraAlta = {
   id: 'sierra',
   name: 'Sierra Alta',
-  description: 'Curvas cerradas de puerto. Hay que frenar.',
+  description: 'Puerto de verdad: se sube y se baja quince metros.',
   laps: 3,
   roadWidth: 11.5,
   samplesPerSeg: 2,

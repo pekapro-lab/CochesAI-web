@@ -421,6 +421,7 @@ canvas.game-canvas {
 
 /* ---- CochesAI additions ---- */
 .logo span { color: #ff3b30; margin-left: 4px; }
+.ver { font-size: 12px; letter-spacing: 0.22em; opacity: 0.72; margin: 0 0 6px; }
 .cfg-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin: 6px 0; font-size: 13px; }
 .cfg-row input, .cfg-row select, .mp-row input, .lobby select { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 7px 9px; font: inherit; }
 .cfg-row input { width: 150px; margin-left: 6px; }

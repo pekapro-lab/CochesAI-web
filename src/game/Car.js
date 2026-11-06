@@ -470,20 +470,20 @@ export class Car {
     this.chassisBody.vectorToWorldFrame(new CANNON.Vec3(0, 1, 0), up)
     if (up.y > 0.15) {
       const lean = Math.acos(Math.max(-1, Math.min(1, up.y)))
-      if (lean > 0.06) {
+      if (lean > 0.4) {
         const axis = new CANNON.Vec3()
         new CANNON.Vec3(0, 1, 0).cross(up, axis)
         if (axis.lengthSquared() > 1e-8) {
           axis.normalize()
-          // Torque pulls roof toward world-up (axis = worldUp × carUp)
-          const strength = lean * 2200
+          // Only right a car that is actually rolling over. A hill (under ~20°) must be left alone.
+          const strength = (lean - 0.4) * 2600
           this.chassisBody.torque.x -= axis.x * strength
           this.chassisBody.torque.y -= axis.y * strength
           this.chassisBody.torque.z -= axis.z * strength
         }
       }
-      this.chassisBody.angularVelocity.x *= 0.9
-      this.chassisBody.angularVelocity.z *= 0.9
+      this.chassisBody.angularVelocity.x *= 0.97
+      this.chassisBody.angularVelocity.z *= 0.97
     }
     const velocity = this.chassisBody.velocity
     const forward = new CANNON.Vec3()

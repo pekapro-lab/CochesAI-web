@@ -1,8 +1,10 @@
-# CochesAI · Carreras multijugador
+# CochesAI · Carreras con cuestas
 
-Juego de carreras 3D para el navegador. Se juega **en el ordenador y en el móvil** (Android e iOS, con controles táctiles) y **con amigos mediante un código de sala**. No necesita instalar nada, ni cuentas, ni APIs de pago.
+Juego de carreras 3D para el navegador. Los cuatro circuitos tienen desnivel de verdad: se sube y se baja, y el coche pisa la cuesta. Se juega en el ordenador y en el móvil, solo contra la IA o con amigos por código de sala.
 
-▶️ **Jugar:** https://pekapro-lab.github.io/CochesAI-web/
+▶️ **Jugar:** https://cochesai.grok.me/ · copia en Pages: https://pekapro-lab.github.io/CochesAI-web/
+
+**2.5** — Circuito Norte (cuesta de 7 m), Bosque Rojo (repechos), Costa Dorada (duna) y Sierra Alta (puerto de 15 m).
 
 ## Cómo se juega
 - **Carrera rápida:** elige circuito, número de rivales (0–5) y dificultad (Fácil, Normal o Difícil).

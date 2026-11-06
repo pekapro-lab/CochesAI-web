@@ -1,7 +1,7 @@
 export const bosqueRojo = {
   id: 'bosque',
   name: 'Bosque Rojo',
-  description: 'Eses rápidas entre pinos y una recta de lanzamiento.',
+  description: 'Eses con repechos entre los pinos.',
   laps: 3,
   roadWidth: 13,
   samplesPerSeg: 3,

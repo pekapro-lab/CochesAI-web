@@ -25,7 +25,8 @@ export class UI {
       <div class="menu" id="menu">
         <div class="menu-card panel interactive">
           <div class="logo">COCHES<span>AI</span></div>
-          <div class="tagline">Carreras multijugador · rivales con IA propia (sin APIs)</div>
+          <div class="ver" id="menu-ver"></div>
+          <div class="tagline">Cuestas y desniveles · rivales con IA propia (sin APIs)</div>
           <div class="cfg-row">
             <label>Tu nombre <input id="in-name" maxlength="14" placeholder="Piloto" autocomplete="off"/></label>
           </div>

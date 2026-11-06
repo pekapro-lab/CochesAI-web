@@ -95,7 +95,7 @@ export function guardBot(racer, track, dt, reset) {
   const path = track.path, N = path.length
   const half = (track.roadWidth || 12) / 2
   const px = body.position.x, pz = body.position.z
-  let best = Infinity, cx = 0, cz = 0
+  let best = Infinity, cx = 0, cz = 0, cy = 0
   for (let k = -12; k <= 12; k++) {
     const j = (racer.idx + k + N) % N
     const p = path[j], q = path[(j + 1) % N]
@@ -103,7 +103,7 @@ export function guardBot(racer, track, dt, reset) {
     const u = Math.max(0, Math.min(1, ((px - p.x) * ex + (pz - p.z) * ez) / L))
     const x = p.x + ex * u, z = p.z + ez * u
     const d = (px - x) ** 2 + (pz - z) ** 2
-    if (d < best) { best = d; cx = x; cz = z }
+    if (d < best) { best = d; cx = x; cz = z; cy = (p.y || 0) + ((q.y || 0) - (p.y || 0)) * u }
   }
   const d = Math.sqrt(best)
   const limit = half + 1.4
@@ -114,8 +114,8 @@ export function guardBot(racer, track, dt, reset) {
     const vOut = body.velocity.x * nx + body.velocity.z * nz
     if (vOut > 0) { body.velocity.x -= nx * vOut; body.velocity.z -= nz * vOut }
   }
-  if (body.position.y > 1.2) {
-    body.position.y = 1.2
+  if (body.position.y > cy + 1.8) {
+    body.position.y = cy + 1.15
     if (body.velocity.y > 0) body.velocity.y = 0
   }
   const wheels = car.wheelsOnGround()
