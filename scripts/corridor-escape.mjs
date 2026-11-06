@@ -63,7 +63,7 @@ for (const id of tracks) {
       const hx = tx * Math.cos(ang) + nx * Math.sin(ang), hz = tz * Math.cos(ang) + nz * Math.sin(ang)
       const yaw = Math.atan2(hx, hz)
       const body = g.car.chassisBody
-      body.position.set(a.x - nx * 1.5, 0.75, a.z - nz * 1.5)
+      body.position.set(a.x - nx * 1.5, (a.y || 0) + 0.75, a.z - nz * 1.5)
       body.quaternion.setFromEuler(0, yaw, 0)
       body.velocity.set(hx * speed, 0, hz * speed)
       body.angularVelocity.set(0, 0, 0)

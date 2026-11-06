@@ -118,12 +118,16 @@ export function guardBot(racer, track, dt, reset) {
     body.position.y = cy + 1.15
     if (body.velocity.y > 0) body.velocity.y = 0
   }
+  if (body.position.y < cy + 0.15) {
+    body.position.y = cy + 0.72
+    if (body.velocity.y < 0) body.velocity.y = 0
+  }
   const wheels = car.wheelsOnGround()
-  if (wheels === 0 && body.position.y < 0.45) {
-    body.position.y = 0.75
+  if (wheels === 0 && body.position.y < cy + 0.45) {
+    body.position.y = cy + 0.75
     if (body.velocity.y < 0) body.velocity.y = 0
   }
   racer._air = wheels === 0 ? (racer._air || 0) + dt : 0
-  if (wheels === 0 && body.position.y > 0.55) body.applyForce(new CANNON.Vec3(0, -7000, 0))
+  if (wheels === 0 && body.position.y > cy + 0.55) body.applyForce(new CANNON.Vec3(0, -7000, 0))
   if (racer._air > 2.2) reset('air')
 }
