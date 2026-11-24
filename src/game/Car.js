@@ -6,6 +6,7 @@ const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _va = new THRE
 import { applyRealCar, realCarsEnabled, forgetRealCar } from './RealCar.js'
 import { buildCarMesh, buildWheel as buildWheelV2, defaultConfig, MODEL_BY_ID, SPOILERS } from './CarModels.js'
 import { SURFACE_PRESETS, SURFACE_SYSTEM } from './surfaces.js'
+import { tireGrip, wheelSlipRad } from './tires.js'
 
 function canvasTex(w, h, draw, repeat = 1) {
   const c = document.createElement('canvas')
@@ -301,6 +302,7 @@ export class Car {
     this.surfaceId = 'dry'
     this._prevSpeed = 0
     this.slip = 0 // 0..1 rear sliding amount (tyre squeal / HUD)
+    this.tireDeg = 0
     this.longAcc = 0
   }
 
@@ -615,12 +617,18 @@ export class Car {
     const slipAngle = Math.abs(speed) > 3 ? Math.atan2(Math.abs(lat), Math.abs(speed)) : 0
     this.slip += (Math.min(1, slipAngle / 0.35) - this.slip) * Math.min(1, dt * 8)
     const drift = this.model.stats.drift
+    let maxSlip = 0
     for (let i = 0; i < 4; i++) {
       const surf = this._wheelSurf[i]
-      let f = this._baseSlip[i] * (i < 2 ? 1 + wt : 1 - wt) * surf.grip
+      const slip = wheelSlipRad(this.chassisBody, this.vehicle, i)
+      maxSlip = Math.max(maxSlip, Math.abs(slip))
+      const tg = tireGrip(slip)
+      let f = this._baseSlip[i] * (i < 2 ? 1 + wt : 1 - wt) * surf.grip * tg
       if (i >= 2 && controls.handbrake) f = (1.1 / drift) * surf.grip * SURFACE_SYSTEM.handbrakeRearScale
       this.vehicle.wheelInfos[i].frictionSlip = f
     }
+    this.tireDeg = maxSlip * 57.3
+    if (this.tireDeg >= 6) this.surfaceLabel += ` · ${Math.round(this.tireDeg)}°`
     const drag = (this._wheelSurf[0].drag + this._wheelSurf[1].drag + this._wheelSurf[2].drag + this._wheelSurf[3].drag) * 0.25
     if (drag > 0 && this.wheelsOnGround() >= 2 && Math.abs(speed) > 1) {
       const vx = this.chassisBody.velocity
