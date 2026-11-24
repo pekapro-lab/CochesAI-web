@@ -112,6 +112,7 @@ export async function applyRealCar(car, { paint, night, lod = false } = {}) {
     car.realModel = holder
     _models.add(holder)
     if (_hdrTex) setRealCarEnv(!!night)
+    bindRealCockpit(car)
     return true
   } catch (e) {
     console.warn('[realista] modelo GLB no disponible, uso el coche clásico:', e?.message || e)
@@ -120,6 +121,41 @@ export async function applyRealCar(car, { paint, night, lod = false } = {}) {
 }
 
 export function forgetRealCar(car) { if (car.realModel) _models.delete(car.realModel) }
+
+/** Ojo del piloto y volante del GLB, en el espacio del chasis. */
+function bindRealCockpit(car) {
+  const root = car.realModel
+  const wheel = root?.getObjectByName('InteriorSteeringWheel01')
+  const seat = root?.getObjectByName('InteriorSeatsColor1')
+  if (!wheel || !seat) return
+  car.mesh.updateMatrixWorld(true)
+  const wl = car.mesh.worldToLocal(wheel.getWorldPosition(new THREE.Vector3()))
+  // El asiento del GLB es un bloque alto: el ojo va sobre el volante, no en el centro del mesh.
+  const eye = new THREE.Vector3(
+    Math.abs(wl.x) < 0.15 ? -0.32 : wl.x,
+    wl.y + 0.42,
+    wl.z - 0.55,
+  )
+  car.cockpitEye = eye
+
+  const parts = []
+  root.traverse((o) => { if (/^InteriorSteering(Wheel|Handle|Emblem)/.test(o.name)) parts.push(o) })
+  if (!parts.length) return
+  const parent = wheel.parent
+  const pivot = new THREE.Group()
+  pivot.name = 'steerPivot'
+  parent.add(pivot)
+  parent.updateMatrixWorld(true)
+  const center = wheel.getWorldPosition(new THREE.Vector3())
+  pivot.position.copy(parent.worldToLocal(center.clone()))
+  const wq = wheel.getWorldQuaternion(new THREE.Quaternion())
+  const pq = parent.getWorldQuaternion(new THREE.Quaternion())
+  pivot.quaternion.copy(pq.invert()).multiply(wq)
+  pivot.updateMatrixWorld(true)
+  for (const part of parts) pivot.attach(part)
+  car._steerRest = pivot.quaternion.clone()
+  car.steerWheel = pivot
+}
 
 /** Garaje: modelo realista completo (con ruedas) apoyado en y=0, batalla 2,7 m, frente hacia +Z. */
 export async function buildRealPreview(paint) {

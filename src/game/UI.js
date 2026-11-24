@@ -339,7 +339,11 @@ export class UI {
   }
 
   setCameraLabel(mode) {
-    this.el.querySelector('#btn-cam').textContent = mode === 'hood' ? 'C' : '↕'
+    const b = this.el.querySelector('#btn-cam')
+    const label = { hood: 'C', cockpit: 'K', chase: '↕' }
+    const title = { hood: 'Cámara: capó', cockpit: 'Cámara: cabina', chase: 'Cámara: persecución' }
+    b.textContent = label[mode] || 'C'
+    b.title = title[mode] || 'Cámara'
   }
 
   setMusic(on) {

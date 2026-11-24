@@ -271,6 +271,9 @@ export class Car {
     const built = buildCarMesh(this.cfg, { seed: opts.seed || 0 })
     Object.assign(this, { bodyMat: built.bodyMat, hoodMesh: built.hood, headLightMeshes: built.headLightMeshes, scannerLeds: built.scannerLeds, scannerGroup: built.scannerGroup, headLightL: built.headLightL, headLightR: built.headLightR, scannerLight: built.scannerLight })
     this.mesh = built.root
+    this.steerWheel = built.cockpit?.wheel || null
+    this.cockpitEye = built.cockpit?.eye || new THREE.Vector3(-0.34, 0.8, -0.05)
+    if (opts.lite && built.cockpit?.lamp) built.cockpit.lamp.visible = false
     for (const o of this.mesh.children) if (o.isMesh) o.receiveShadow = false
     if (opts.lite) {
       // Rivals: no real lights (one spot/point light per car is too expensive on phones)
@@ -473,6 +476,17 @@ export class Car {
     return root
   }
 
+  _turnWheel(steer = this._steerCurrent) {
+    if (!this.steerWheel) return
+    const a = -(steer || 0) * 2.8
+    if (this._steerRest) {
+      this.steerWheel.quaternion.copy(this._steerRest)
+      this.steerWheel.rotateZ(a)
+    } else {
+      this.steerWheel.rotation.z = a
+    }
+  }
+
   _readSurfaces() {
     const q = this.world && this.world.surfaceAt
     const counts = { dry: 0, wet: 0, gravel: 0 }
@@ -540,6 +554,7 @@ export class Car {
 
     this.vehicle.setSteeringValue(steerVal, 0)
     this.vehicle.setSteeringValue(steerVal, 1)
+    this._turnWheel()
 
     this._readSurfaces()
     const frontUnder = (this._wheelSurf[0].understeer + this._wheelSurf[1].understeer) * 0.5
@@ -547,6 +562,7 @@ export class Car {
       const scale = Math.max(0.42, 1 - frontUnder * Math.min(1, Number(controls.brake) || 0))
       this.vehicle.setSteeringValue(steerVal * scale, 0)
       this.vehicle.setSteeringValue(steerVal * scale, 1)
+      this._turnWheel(steerVal * scale)
     }
 
     // Clear brakes/engine every frame, then set intentionally

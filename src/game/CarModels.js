@@ -389,14 +389,17 @@ export function buildCarMesh(cfg, { seed = 0 } = {}) {
   const cabGeo = new RoundedBoxGeometry(d.cabW, d.cabH, d.cabL, 4, d.boxy ? 0.14 : 0.24)
   taperTop(cabGeo, d.taper)
   const cabin = add(new THREE.Mesh(cabGeo, plainMat)); cabin.position.set(0, top + d.cabH / 2 - 0.02, d.cabZ)
+  cabin.userData.hideInCockpit = true
   const cy = top + d.cabH * 0.55
   const ws = add(new THREE.Mesh(new RoundedBoxGeometry(d.cabW * 0.88, d.cabH * 0.9, 0.06, 2, 0.03), glassMat), false)
   ws.userData.windshield = true; ws.position.set(0, cy, d.cabZ + d.cabL / 2 + 0.02); ws.rotation.x = d.boxy ? -0.45 : -0.65
   const rg = add(new THREE.Mesh(new RoundedBoxGeometry(d.cabW * 0.8, d.cabH * 0.75, 0.06, 2, 0.03), glassMat), false)
   rg.position.set(0, cy, d.cabZ - d.cabL / 2 - 0.02); rg.rotation.x = d.hatch ? 0.25 : 0.6
+  rg.userData.hideInCockpit = true
   for (const x of [-1, 1]) {
     const sg = add(new THREE.Mesh(new RoundedBoxGeometry(0.05, d.cabH * 0.6, d.cabL * 0.7, 2, 0.02), glassMat), false)
     sg.position.set(x * (d.cabW / 2) * (1 - (1 - d.taper) * 0.5), cy, d.cabZ)
+    sg.userData.hideInCockpit = true
     const mir = add(new THREE.Mesh(new RoundedBoxGeometry(0.2, 0.12, 0.26, 2, 0.05), bodyMat))
     mir.position.set(x * (d.w / 2 + 0.02), top + 0.12, d.cabZ + d.cabL / 2 - 0.1)
   }
@@ -479,6 +482,8 @@ export function buildCarMesh(cfg, { seed = 0 } = {}) {
   }
   root.add(scannerGroup)
 
+  const cockpit = addCockpit(root, d, top)
+
   const headLightL = new THREE.SpotLight(0xfff0d0, 2.2, 55, Math.PI / 4.5, 0.5, 1)
   const headLightR = new THREE.SpotLight(0xfff0d0, 2.2, 55, Math.PI / 4.5, 0.5, 1)
   headLightL.position.set(-0.7, 0.2, d.l / 2 + 0.1); headLightR.position.set(0.7, 0.2, d.l / 2 + 0.1)
@@ -486,7 +491,85 @@ export function buildCarMesh(cfg, { seed = 0 } = {}) {
   root.add(headLightL, headLightL.target, headLightR, headLightR.target)
   const scannerLight = new THREE.PointLight(0xff1a1a, 1.8, 8, 2); scannerLight.position.set(0, 0.35, d.l / 2); root.add(scannerLight)
 
-  return { root, bodyMat, hood, headLightMeshes, scannerLeds, scannerGroup, headLightL, headLightR, scannerLight, model: m }
+  return { root, bodyMat, hood, headLightMeshes, scannerLeds, scannerGroup, headLightL, headLightR, scannerLight, model: m, cockpit }
+}
+
+/** Salpicadero, pilares y volante. La cámara de cabina se sienta en `eye`. */
+function addCockpit(root, d, top) {
+  const muscle = !!d.muscle
+  const group = new THREE.Group()
+  group.name = 'cockpit'
+  group.userData.cockpit = true
+  const dashMat = new THREE.MeshStandardMaterial({ color: 0x16120f, roughness: 0.78, metalness: 0.06 })
+  const hide = new THREE.MeshStandardMaterial({ color: 0x2a211c, roughness: 0.62, metalness: 0.12 })
+  const wheelMat = new THREE.MeshStandardMaterial({ color: 0x101010, roughness: 0.42, metalness: 0.35 })
+  const brass = new THREE.MeshStandardMaterial({ color: 0xc6a36a, roughness: 0.28, metalness: 0.82 })
+  const amber = new THREE.MeshStandardMaterial({ color: 0x3a2410, emissive: 0xff9a1f, emissiveIntensity: 0.85 })
+  const red = new THREE.MeshStandardMaterial({ color: 0x2a100c, emissive: 0xff3a2a, emissiveIntensity: 0.7 })
+
+  const eye = new THREE.Vector3(
+    -0.34,
+    muscle ? 0.8 : top + d.cabH * 0.62,
+    muscle ? -0.05 : d.cabZ - 0.02,
+  )
+  const cowlZ = muscle ? 0.5 : d.cabZ + d.cabL * 0.38
+  const dashW = Math.min(d.cabW * 0.96, d.w * 0.78)
+
+  const dash = new THREE.Mesh(new THREE.BoxGeometry(dashW, 0.1, 0.46), dashMat)
+  dash.position.set(0, eye.y - 0.3, cowlZ - 0.02)
+  group.add(dash)
+  const roll = new THREE.Mesh(new THREE.BoxGeometry(dashW * 0.96, 0.05, 0.1), hide)
+  roll.position.set(0, eye.y - 0.22, cowlZ + 0.12)
+  group.add(roll)
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.035, 0.16), hide)
+  pad.position.set(eye.x, eye.y - 0.2, cowlZ - 0.02)
+  group.add(pad)
+
+  for (const x of [-1, 1]) {
+    const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.62, 0.05), dashMat)
+    pillar.position.set(x * dashW * 0.46, eye.y + 0.02, cowlZ + 0.02)
+    pillar.rotation.x = -0.42
+    group.add(pillar)
+  }
+  const header = new THREE.Mesh(new THREE.BoxGeometry(dashW, 0.05, 0.28), dashMat)
+  header.position.set(0, eye.y + 0.2, cowlZ - 0.22)
+  group.add(header)
+  const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.07, 0.02), brass)
+  mirror.position.set(0.02, eye.y + 0.16, eye.z + 0.22)
+  group.add(mirror)
+
+  const wheel = new THREE.Group()
+  wheel.add(new THREE.Mesh(new THREE.TorusGeometry(0.155, 0.016, 8, 20), wheelMat))
+  for (let i = 0; i < 3; i++) {
+    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.13, 0.012), wheelMat)
+    spoke.position.y = 0.045
+    spoke.rotation.z = i * (Math.PI * 2 / 3)
+    wheel.add(spoke)
+  }
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.025, 12), brass)
+  hub.rotation.x = Math.PI / 2
+  wheel.add(hub)
+  wheel.position.set(eye.x, eye.y - 0.2, cowlZ - 0.08)
+  group.add(wheel)
+
+  const g1 = new THREE.Mesh(new THREE.CircleGeometry(0.038, 14), amber)
+  const g2 = new THREE.Mesh(new THREE.CircleGeometry(0.03, 14), red)
+  g1.position.set(eye.x + 0.02, eye.y - 0.25, cowlZ + 0.04)
+  g2.position.set(eye.x + 0.12, eye.y - 0.26, cowlZ + 0.02)
+  g1.rotation.y = Math.PI
+  g2.rotation.y = Math.PI
+  group.add(g1, g2)
+
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.34, 0.1), hide)
+  seat.position.set(eye.x, eye.y - 0.28, eye.z - 0.28)
+  group.add(seat)
+
+  const lamp = new THREE.PointLight(0xffb060, 0.55, 1.1, 2)
+  lamp.position.set(eye.x, eye.y - 0.02, eye.z + 0.08)
+  group.add(lamp)
+
+  root.add(group)
+  return { wheel, eye, lamp }
 }
 
 /**

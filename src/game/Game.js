@@ -32,7 +32,7 @@ export class Game {
     this.audio = new AudioEngine()
     this.timeOfDay = localStorage.getItem('cochesai-tod') === 'day' ? 'day' : 'night'
     this.state = 'menu' // menu | countdown | racing | paused | finished
-    this.cameraMode = 'hood' // hood | chase
+    this.cameraMode = 'hood' // hood | cockpit | chase
     this.track = null
     this.car = null
     this.world = null
@@ -128,7 +128,8 @@ export class Game {
 
   _bindUI() {
     this.input.onToggleCamera = () => {
-      this.cameraMode = this.cameraMode === 'hood' ? 'chase' : 'hood'
+      const order = ['hood', 'cockpit', 'chase']
+      this.cameraMode = order[(order.indexOf(this.cameraMode) + 1) % order.length]
       this.ui.setCameraLabel(this.cameraMode)
     }
     this.input.onPause = () => {
@@ -327,7 +328,7 @@ export class Game {
     const w = window.innerWidth, h = window.innerHeight, key = w + 'x' + h + '@' + this.renderer.getPixelRatio()
     if (key !== this._composerSize) { this._composerSize = key; this.composer.setPixelRatio(this.renderer.getPixelRatio()); this.composer.setSize(w, h) }
     const night = this.timeOfDay !== 'day'
-    this.bloomPass.strength = night ? (this.cameraMode === 'hood' ? 0.3 : 0.55) : 0.22
+    this.bloomPass.strength = night ? (this.cameraMode === 'chase' ? 0.55 : 0.3) : 0.22
     this.bloomPass.threshold = night ? 0.75 : 0.92
     this.composer.render()
   }
@@ -818,9 +819,8 @@ export class Game {
     const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(q)
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q)
 
-    if (this.cameraMode === 'hood') {
-      // capo: cámara sobre el capó del modelo realista (fuera del parabrisas), pose interpolada y
-      // cabeceo/balanceo/rebote suavizados con muelles críticamente amortiguados; el giro (yaw) va directo.
+    if (this.cameraMode === 'hood' || this.cameraMode === 'cockpit') {
+      // Capó o cabina: pose interpolada, cabeceo y balanceo suavizados. El giro va directo.
       const real = !!this.car.realModel
       const b = this.car.chassisBody, ip = b.interpolatedPosition, iq = b.interpolatedQuaternion
       const cq = new THREE.Quaternion(iq.x, iq.y, iq.z, iq.w)
@@ -831,16 +831,18 @@ export class Game {
       ;[h.pitch, h.vp] = spring(h.pitch, h.vp, e.x * 0.6, 9)
       ;[h.roll, h.vr] = spring(h.roll, h.vr, e.z * 0.4, 9)
       ;[h.y, h.vy] = spring(h.y, h.vy, ip.y, 14)
-      if (Math.abs(h.y - ip.y) > 1.5) { h.y = ip.y; h.vy = 0 } // recolocado / teletransporte
+      if (Math.abs(h.y - ip.y) > 1.5) { h.y = ip.y; h.vy = 0 }
       const sq = new THREE.Quaternion().setFromEuler(new THREE.Euler(h.pitch, e.y, h.roll, 'YXZ'))
-      const off = real ? new THREE.Vector3(0, 0.44, 1.2) : new THREE.Vector3(0, 0.55, 0.85)
-      const hoodPos = off.applyQuaternion(sq).add(new THREE.Vector3(ip.x, h.y, ip.z))
+      const eye = this.cameraMode === 'cockpit'
+        ? (this.car.cockpitEye || new THREE.Vector3(-0.34, 0.8, -0.05))
+        : (real ? new THREE.Vector3(0, 0.44, 1.2) : new THREE.Vector3(0, 0.55, 0.85))
+      const hoodPos = eye.clone().applyQuaternion(sq).add(new THREE.Vector3(ip.x, h.y, ip.z))
       this._hideWindshield(true)
       this.camera.position.copy(hoodPos)
       this.camera.quaternion.copy(sq)
-      this.camera.rotateX(0.06) // mirar un poco hacia abajo para ver la carretera y el capó
-      this.camera.rotateY(Math.PI) // la cámara mira por -Z; el coche avanza por +Z
-      this.camera.fov = 70
+      this.camera.rotateY(Math.PI)
+      this.camera.rotateX(this.cameraMode === 'cockpit' ? 0.07 : 0.06)
+      this.camera.fov = this.cameraMode === 'cockpit' ? 74 : 70
       this.camera.near = 0.05
     } else {
       this._hood = null
@@ -865,11 +867,13 @@ export class Game {
     }
   }
 
-  /** Hood cam: the camera sits inside the cabin, so hide our own windscreen (no tinted overlay). */
+  /** Capó y cabina: el parabrisas propio tapa la carretera. */
   _hideWindshield(hide) {
-    if (!this.car || this._wsHidden === hide && this._wsCar === this.car) return
-    this._wsHidden = hide; this._wsCar = this.car
-    this.car.mesh.traverse((o) => { if (o.userData.windshield) o.visible = !hide })
+    if (!this.car) return
+    this.car.mesh.traverse((o) => {
+      if (o.userData.windshield || (o.name && o.name.includes('Windshield') && !o.name.includes('Wiper'))) o.visible = !hide
+      if (o.userData.hideInCockpit) o.visible = this.cameraMode !== 'cockpit'
+    })
   }
 
   _onResize = () => {
