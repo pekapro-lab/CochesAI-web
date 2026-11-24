@@ -12,6 +12,7 @@ import { RaceMixin } from './RaceMixin.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { Garage } from './Garage.js'
 import { Effects } from './Effects.js'
+import { SURFACE_SYSTEM } from './surfaces.js'
 import { loadCarHdri, setRealCarEnv } from './RealCar.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
@@ -178,6 +179,13 @@ export class Game {
     this.ui.onRecover = () => this.recoverCar()
     this.ui.onRestartRace = () => this.restartRace()
     this.input.onRecover = () => this.recoverCar()
+    const flipSurfaces = () => {
+      SURFACE_SYSTEM.enabled = !SURFACE_SYSTEM.enabled
+      const btn = this.ui.el.querySelector('#btn-surface')
+      if (btn) btn.classList.toggle('on', SURFACE_SYSTEM.enabled)
+    }
+    this.input.onToggleSurfaces = flipSurfaces
+    this.ui.onToggleSurfaces = flipSurfaces
     this.ui.onTimeOfDay = (mode) => {
       this.timeOfDay = mode === 'day' ? 'day' : 'night'
       localStorage.setItem('cochesai-tod', this.timeOfDay)
@@ -526,6 +534,8 @@ export class Game {
           best: this.bestLap,
           speed: this.car.speedKmh,
           gear: this.car.gear,
+          surface: this.car.surfaceLabel,
+          surfaceId: this.car.surfaceId,
         })
         this.ui.drawMinimap(this.track.path, this.car.getPosition(), this.racers)
       }

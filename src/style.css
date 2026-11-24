@@ -242,6 +242,16 @@ canvas.game-canvas {
   font-size: 0.75rem;
   letter-spacing: 0.12em;
 }
+.speedo .surface {
+  margin-top: 3px;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #e7e1d6;
+}
+.speedo .surface.wet { color: #7ec8ff; }
+.speedo .surface.gravel { color: #c4a574; }
+#btn-surface.on { color: #ffb020; }
 
 .countdown {
   position: absolute;

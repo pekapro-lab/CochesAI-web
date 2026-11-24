@@ -5,6 +5,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _va = new THREE.Vector3()
 import { applyRealCar, realCarsEnabled, forgetRealCar } from './RealCar.js'
 import { buildCarMesh, buildWheel as buildWheelV2, defaultConfig, MODEL_BY_ID, SPOILERS } from './CarModels.js'
+import { SURFACE_PRESETS, SURFACE_SYSTEM } from './surfaces.js'
 
 function canvasTex(w, h, draw, repeat = 1) {
   const c = document.createElement('canvas')
@@ -295,6 +296,9 @@ export class Car {
     this.gear = 'D'
     this.signedSpeedKmh = 0
     this._baseSlip = [0, 1, 2, 3].map((i) => this.vehicle.wheelInfos[i].frictionSlip)
+    this._wheelSurf = [SURFACE_PRESETS.dry, SURFACE_PRESETS.dry, SURFACE_PRESETS.dry, SURFACE_PRESETS.dry]
+    this.surfaceLabel = SURFACE_PRESETS.dry.name
+    this.surfaceId = 'dry'
     this._prevSpeed = 0
     this.slip = 0 // 0..1 rear sliding amount (tyre squeal / HUD)
     this.longAcc = 0
@@ -463,6 +467,29 @@ export class Car {
     return root
   }
 
+  _readSurfaces() {
+    const q = this.world && this.world.surfaceAt
+    const counts = { dry: 0, wet: 0, gravel: 0 }
+    for (let i = 0; i < 4; i++) {
+      const w = this.vehicle.wheelInfos[i]
+      let spec = SURFACE_PRESETS.dry
+      if (q) {
+        const hit = w.raycastResult && w.raycastResult.hitPointWorld
+        const p = w.isInContact && hit ? hit : w.worldTransform.position
+        spec = q(p.x, p.z)
+      }
+      this._wheelSurf[i] = spec
+      if (spec.id && counts[spec.id] != null) counts[spec.id]++
+    }
+    let id = 'dry'
+    if (!SURFACE_SYSTEM.enabled) id = 'dry'
+    else if (counts.gravel > 0) id = 'gravel'
+    else if (counts.wet > 0) id = 'wet'
+    const shown = this._wheelSurf.find((s) => s.id === id) || this._wheelSurf[0]
+    this.surfaceId = id
+    this.surfaceLabel = shown.name
+  }
+
   update(dt, controls) {
     this.chassisBody.wakeUp()
     // Anti-roll / upright: keep the chassis from banking so hard that wheel rays miss the plane
@@ -508,6 +535,14 @@ export class Car {
     this.vehicle.setSteeringValue(steerVal, 0)
     this.vehicle.setSteeringValue(steerVal, 1)
 
+    this._readSurfaces()
+    const frontUnder = (this._wheelSurf[0].understeer + this._wheelSurf[1].understeer) * 0.5
+    if (controls.brake > 0.15 && speed > 4 && frontUnder > 0.02) {
+      const scale = Math.max(0.42, 1 - frontUnder * Math.min(1, Number(controls.brake) || 0))
+      this.vehicle.setSteeringValue(steerVal * scale, 0)
+      this.vehicle.setSteeringValue(steerVal * scale, 1)
+    }
+
     // Clear brakes/engine every frame, then set intentionally
     for (let i = 0; i < 4; i++) {
       this.vehicle.setBrake(0, i)
@@ -523,7 +558,8 @@ export class Car {
     if (controls.throttle && !wantReverse) {
       // Extra pull above 100 km/h so the player can reach its higher top speed (rivals: highSpeedBoost 0)
       const hi = Math.max(0, Math.min(1, (this.speedKmh - 100) / 60))
-      const force = this.maxForce * (1 + this.highSpeedBoost * hi) * (controls.handbrake ? 0.55 : 1) * Math.min(1, Number(controls.throttle) || 0)
+      const dig = (this._wheelSurf[2].digIn + this._wheelSurf[3].digIn) * 0.5
+      const force = this.maxForce * (1 + this.highSpeedBoost * hi) * (controls.handbrake ? 0.55 : 1) * (1 - dig * 0.85) * Math.min(1, Number(controls.throttle) || 0)
       // Negative engine force = forward (indexForwardAxis = 2)
       this.vehicle.applyEngineForce(-force, 2)
       this.vehicle.applyEngineForce(-force, 3)
@@ -580,9 +616,16 @@ export class Car {
     this.slip += (Math.min(1, slipAngle / 0.35) - this.slip) * Math.min(1, dt * 8)
     const drift = this.model.stats.drift
     for (let i = 0; i < 4; i++) {
-      let f = this._baseSlip[i] * (i < 2 ? 1 + wt : 1 - wt)
-      if (i >= 2 && controls.handbrake) f = 1.1 / drift
+      const surf = this._wheelSurf[i]
+      let f = this._baseSlip[i] * (i < 2 ? 1 + wt : 1 - wt) * surf.grip
+      if (i >= 2 && controls.handbrake) f = (1.1 / drift) * surf.grip * SURFACE_SYSTEM.handbrakeRearScale
       this.vehicle.wheelInfos[i].frictionSlip = f
+    }
+    const drag = (this._wheelSurf[0].drag + this._wheelSurf[1].drag + this._wheelSurf[2].drag + this._wheelSurf[3].drag) * 0.25
+    if (drag > 0 && this.wheelsOnGround() >= 2 && Math.abs(speed) > 1) {
+      const vx = this.chassisBody.velocity
+      const sp = Math.hypot(vx.x, vx.z) || 1
+      this.chassisBody.applyForce(new CANNON.Vec3((-vx.x / sp) * drag, 0, (-vx.z / sp) * drag))
     }
     if (controls.handbrake) {
       this.vehicle.setBrake(28, 2)

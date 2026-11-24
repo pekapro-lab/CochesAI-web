@@ -114,6 +114,7 @@ export class UI {
         </div>
         <div class="hud-tools">
           <button class="icon-btn" id="btn-cam" type="button" title="Cámara">C</button>
+          <button class="icon-btn on" id="btn-surface" type="button" title="Superficies seco / lluvia / grava (G)">S</button>
           <button class="icon-btn" id="btn-mute" type="button" title="Silencio">♪</button>
           <button class="icon-btn" id="btn-music" type="button" title="Música">🎵</button>
           <button class="icon-btn" id="btn-recover" type="button" title="Recolocar (R)">↺</button>
@@ -124,6 +125,7 @@ export class UI {
           <div class="gear" id="hud-gear">D</div>
           <div class="kmh" id="hud-speed">0</div>
           <div class="unit">KM/H</div>
+          <div class="surface dry" id="hud-surface">Asfalto seco</div>
         </div>
         <div class="minimap"><canvas id="minimap" width="120" height="120"></canvas></div>
       </div>
@@ -167,6 +169,7 @@ export class UI {
       this.onExitToMenu?.()
     })
     this.el.querySelector('#btn-cam').addEventListener('click', () => this.onToggleCamera?.())
+    this.el.querySelector('#btn-surface').addEventListener('click', () => this.onToggleSurfaces?.())
     this.el.querySelector('#btn-mute').addEventListener('click', () => this.onToggleMute?.())
     this.el.querySelector('#btn-mute-menu').addEventListener('click', () => this.onToggleMute?.())
     this.el.querySelector('#btn-music').addEventListener('click', () => this.onToggleMusic?.())
@@ -312,11 +315,16 @@ export class UI {
     this.countdown.textContent = ''
   }
 
-  updateHud({ lap, totalLaps, current, best, speed, gear }) {
+  updateHud({ lap, totalLaps, current, best, speed, gear, surface, surfaceId }) {
     this.el.querySelector('#hud-lap').textContent = `${lap}/${totalLaps}`
     this.el.querySelector('#hud-current').textContent = formatTime(current)
     this.el.querySelector('#hud-best').textContent = best ? formatTime(best) : '--:--.--'
     this.el.querySelector('#hud-speed').textContent = String(Math.round(speed || 0))
+    const surf = this.el.querySelector('#hud-surface')
+    if (surf) {
+      surf.textContent = surface || 'Asfalto seco'
+      surf.className = 'surface ' + (surfaceId || 'dry')
+    }
     const g = this.el.querySelector('#hud-gear')
     if (g) {
       g.textContent = gear === 'R' ? 'R' : 'D'

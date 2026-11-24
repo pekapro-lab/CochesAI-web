@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { asphaltRoughness, streakTexture } from './Reflections.js'
 import { asphaltTexture, grassTexture, gravelTexture, kerbTexture, addForest, addBillboards } from './Scenery.js'
+import { addSurfaceDecals, attachSurfaceQuery } from './surfaces.js'
 import * as CANNON from 'cannon-es'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
@@ -438,6 +439,8 @@ export function buildTrack(world, scene, def) {
   void sceneryStart
   // Scenery check result is computed on the individual meshes, before they are merged.
   const sceneryResult = sceneryCheck()
+  attachSurfaceQuery(world, centerline, roadWidth)
+  addSurfaceDecals(group, centerline, roadWidth, isDay)
   // Performance (mobile/WebKit): merge all static meshes per material -> a few dozen draw calls
   // instead of ~1-2k meshes. Visual result is identical.
   const merged = mergeStatic(group)

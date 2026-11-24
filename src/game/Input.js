@@ -8,6 +8,7 @@ export class Input {
     this.onPause = null
     this.onMute = null
     this.onRecover = null
+    this.onToggleSurfaces = null
     this._bound = false
   }
 
@@ -35,6 +36,7 @@ export class Input {
     if (e.code === 'Escape' || e.code === 'KeyP') this.onPause?.()
     if (e.code === 'KeyM') this.onMute?.()
     if (e.code === 'KeyR') this.onRecover?.()
+    if (e.code === 'KeyG') this.onToggleSurfaces?.()
   }
 
   _onKeyUp = (e) => {
