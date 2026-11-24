@@ -7,6 +7,7 @@ import { applyRealCar, realCarsEnabled, forgetRealCar } from './RealCar.js'
 import { buildCarMesh, buildWheel as buildWheelV2, defaultConfig, MODEL_BY_ID, SPOILERS } from './CarModels.js'
 import { SURFACE_PRESETS, SURFACE_SYSTEM } from './surfaces.js'
 import { tireGrip, wheelSlipRad } from './tires.js'
+import { freshCompound, stepCompound, compoundMods, compoundReadout } from './compound.js'
 
 function canvasTex(w, h, draw, repeat = 1) {
   const c = document.createElement('canvas')
@@ -303,6 +304,9 @@ export class Car {
     this._prevSpeed = 0
     this.slip = 0 // 0..1 rear sliding amount (tyre squeal / HUD)
     this.tireDeg = 0
+    this.compound = freshCompound()
+    this.compoundLabel = 'Goma óptima · 86° · 0%'
+    this.compoundId = 'ok'
     this.longAcc = 0
   }
 
@@ -622,13 +626,28 @@ export class Car {
       const surf = this._wheelSurf[i]
       const slip = wheelSlipRad(this.chassisBody, this.vehicle, i)
       maxSlip = Math.max(maxSlip, Math.abs(slip))
-      const tg = tireGrip(slip)
-      let f = this._baseSlip[i] * (i < 2 ? 1 + wt : 1 - wt) * surf.grip * tg
-      if (i >= 2 && controls.handbrake) f = (1.1 / drift) * surf.grip * SURFACE_SYSTEM.handbrakeRearScale
+      const onGround = !!this.vehicle.wheelInfos[i].raycastResult?.body
+      if (onGround) {
+        stepCompound(this.compound[i], dt, {
+          slipRad: slip,
+          speed: Math.abs(speed),
+          surfaceId: surf.id,
+          braking: controls.brake > 0.2,
+          handbrake: !!controls.handbrake,
+          rear: i >= 2,
+        })
+      }
+      const mod = compoundMods(this.compound[i])
+      const tg = tireGrip(slip, mod)
+      let f = this._baseSlip[i] * (i < 2 ? 1 + wt : 1 - wt) * surf.grip * tg * mod.grip
+      if (i >= 2 && controls.handbrake) f = (1.1 / drift) * surf.grip * SURFACE_SYSTEM.handbrakeRearScale * mod.grip
       this.vehicle.wheelInfos[i].frictionSlip = f
     }
     this.tireDeg = maxSlip * 57.3
     if (this.tireDeg >= 6) this.surfaceLabel += ` · ${Math.round(this.tireDeg)}°`
+    const rubber = compoundReadout(this.compound)
+    this.compoundLabel = rubber.text
+    this.compoundId = rubber.id
     const drag = (this._wheelSurf[0].drag + this._wheelSurf[1].drag + this._wheelSurf[2].drag + this._wheelSurf[3].drag) * 0.25
     if (drag > 0 && this.wheelsOnGround() >= 2 && Math.abs(speed) > 1) {
       const vx = this.chassisBody.velocity

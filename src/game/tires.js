@@ -22,14 +22,17 @@ const _vel = new CANNON.Vec3()
 const _localF = new CANNON.Vec3(0, 0, 1)
 const _localR = new CANNON.Vec3(1, 0, 0)
 
-/** 1 en recta. Baja solo cuando esa rueda va de lado, pasada la cima. */
-export function tireGrip(slipRad) {
+/** 1 en recta. Baja solo cuando esa rueda va de lado, pasada la cima.
+ *  mod.peakScale baja la cima (goma gastada). mod.falloffAdd la suelta más. */
+export function tireGrip(slipRad, mod) {
   if (!TIRE_SYSTEM.enabled) return 1
-  const peak = TIRE_SYSTEM.peakSlipDeg * Math.PI / 180
+  const peakDeg = TIRE_SYSTEM.peakSlipDeg * (mod?.peakScale ?? 1)
+  const fall = TIRE_SYSTEM.falloff + (mod?.falloffAdd || 0)
+  const peak = peakDeg * Math.PI / 180
   const a = Math.abs(slipRad)
   if (a <= peak) return 1
   const t = Math.min(1, (a - peak) / 0.42)
-  return Math.max(0.62, 1 - t * TIRE_SYSTEM.falloff)
+  return Math.max(0.5, 1 - t * fall)
 }
 
 /** Ángulo de deriva de una rueda, en radianes. Positivo = se va hacia su derecha. */

@@ -126,6 +126,7 @@ export class UI {
           <div class="kmh" id="hud-speed">0</div>
           <div class="unit">KM/H</div>
           <div class="surface dry" id="hud-surface">Asfalto seco</div>
+          <div class="compound ok" id="hud-compound">Goma óptima · 86° · 0%</div>
         </div>
         <div class="minimap"><canvas id="minimap" width="120" height="120"></canvas></div>
       </div>
@@ -315,7 +316,7 @@ export class UI {
     this.countdown.textContent = ''
   }
 
-  updateHud({ lap, totalLaps, current, best, speed, gear, surface, surfaceId }) {
+  updateHud({ lap, totalLaps, current, best, speed, gear, surface, surfaceId, compound, compoundId }) {
     this.el.querySelector('#hud-lap').textContent = `${lap}/${totalLaps}`
     this.el.querySelector('#hud-current').textContent = formatTime(current)
     this.el.querySelector('#hud-best').textContent = best ? formatTime(best) : '--:--.--'
@@ -324,6 +325,11 @@ export class UI {
     if (surf) {
       surf.textContent = surface || 'Asfalto seco'
       surf.className = 'surface ' + (surfaceId || 'dry')
+    }
+    const rubber = this.el.querySelector('#hud-compound')
+    if (rubber) {
+      rubber.textContent = compound || 'Goma óptima · 0%'
+      rubber.className = 'compound ' + (compoundId || 'ok')
     }
     const g = this.el.querySelector('#hud-gear')
     if (g) {

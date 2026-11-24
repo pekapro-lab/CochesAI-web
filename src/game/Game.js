@@ -536,6 +536,8 @@ export class Game {
           gear: this.car.gear,
           surface: this.car.surfaceLabel,
           surfaceId: this.car.surfaceId,
+          compound: this.car.compoundLabel,
+          compoundId: this.car.compoundId,
         })
         this.ui.drawMinimap(this.track.path, this.car.getPosition(), this.racers)
       }

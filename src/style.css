@@ -251,6 +251,19 @@ canvas.game-canvas {
 }
 .speedo .surface.wet { color: #7ec8ff; }
 .speedo .surface.gravel { color: #c4a574; }
+.speedo .compound {
+  margin-top: 1px;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b7c4bc;
+}
+.speedo .compound.cold { color: #8ebfff; }
+.speedo .compound.hot { color: #ffb020; }
+.speedo .compound.cooked { color: #ff7a3c; }
+.speedo .compound.worked { color: #d7c4a2; }
+.speedo .compound.worn { color: #e0a06a; }
+.speedo .compound.dead { color: #ff6b6b; }
 #btn-surface.on { color: #ffb020; }
 
 .countdown {
