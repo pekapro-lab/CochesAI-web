@@ -519,7 +519,10 @@ export class Car {
   _shift(kmh) {
     const up = [34, 64, 98, 134, 170]
     const down = [22, 50, 82, 118, 152]
-    const ratio = [1.15, 1.06, 1, 0.94, 0.9, 0.86]
+    // Las marchas cortas ya no dan más empuje que antes: la caja multiplica por
+    // 1 en primera y resta en las largas. Con 1.15 y el turbo encima, el coche
+    // salía demasiado nervioso desde parado.
+    const ratio = [1, 1, 1, 0.96, 0.92, 0.88]
     let g = this._gearN || 0
     if (g < 5 && kmh > up[g]) g++
     else if (g > 0 && kmh < down[g - 1]) g--
@@ -623,7 +626,9 @@ export class Car {
       // El turbo suma empuje encima de la curva de cada marcha; las superficies
       // (grava) siguen restándolo como antes.
       const turbo = this.model?.sound?.turbo || 0
-      const force = this.maxForce * ratio * (1 + this.highSpeedBoost * hi) * (1 + turbo * (this.boost || 0) * 0.32) * (controls.handbrake ? 0.55 : 1) * (1 - dig * 0.85) * Math.min(1, Number(controls.throttle) || 0)
+      // El turbo empuja con suavidad (14% como mucho con el Brinco, que es el
+      // que más sopla): la patada fuerte la da el sonido, no el empuje.
+      const force = this.maxForce * ratio * (1 + this.highSpeedBoost * hi) * (1 + turbo * (this.boost || 0) * 0.14) * (controls.handbrake ? 0.55 : 1) * (1 - dig * 0.85) * Math.min(1, Number(controls.throttle) || 0)
       // Negative engine force = forward (indexForwardAxis = 2)
       this.vehicle.applyEngineForce(-force, 2)
       this.vehicle.applyEngineForce(-force, 3)
