@@ -173,6 +173,7 @@ export class AudioEngine {
   setDriving({ speedKmh, throttle, brake, slip = 0, gear = null, boost = null }) {
     if (!this._engine || this.muted) return
     const e = this._engine, p = this.profile
+    const t = this.ctx.currentTime
     const reverse = gear === -1
     this._gearChanged = false
     const target = reverse ? p.idle * 1.15 : this._rpmFor(speedKmh, throttle, gear)
