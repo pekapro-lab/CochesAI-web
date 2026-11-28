@@ -74,6 +74,13 @@ class FakeCtx {
 
 globalThis.AudioContext = FakeCtx
 globalThis.window = { AudioContext: FakeCtx }
+// En Node 20 `navigator` existe y es de solo lectura: se redefine la propiedad.
+Object.defineProperty(globalThis, 'navigator', {
+  value: { userAgent: 'node-smoke', maxTouchPoints: 0 },
+  configurable: true,
+  writable: true,
+})
+globalThis.document = { createElement: () => ({ canPlayType: () => '' }) }
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
 globalThis.__META_ENV__ = { BASE_URL: '/', DEV: false }
 
