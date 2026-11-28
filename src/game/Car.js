@@ -610,6 +610,9 @@ export class Car {
     this.fx = { brake: wantBrake && Number(controls.brake) > 0.05, reverse: wantReverse, hb: !!controls.handbrake }
     // Marcha real y turbo: la fuerza cambia con la relación y con lo que haya
     // soplado el turbo. Con 'R' no se toca la marcha.
+    // Al salir de marcha atrás se vuelve a primera: si no, _shift bajaría
+    // desde la marcha que traía (una por frame) y daría un tirón.
+    if (wantReverse) this._gearN = 0
     const ratio = wantReverse ? 1 : this._shift(this.speedKmh)
     this._spool(dt, Number(controls.throttle) || 0, wantReverse)
 
