@@ -13,6 +13,7 @@
     "test:mp": "vite build && node scripts/multiplayer.mjs",
     "test:start": "vite build && node scripts/start-straight.mjs",
     "test:speed": "vite build && node scripts/top-speed.mjs",
+    "test:audio": "node scripts/smoke-audio.mjs",
     "test:all": "vite build && node scripts/start-straight.mjs && node scripts/top-speed.mjs && node scripts/ground-scan.mjs && node scripts/lap-offsets.mjs && node scripts/corridor-escape.mjs && node scripts/ai-race.mjs && node scripts/multiplayer.mjs",
     "build:apk": "VITE_BASE=./ vite build --outDir www && npx cap sync android"
   },
