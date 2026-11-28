@@ -5,7 +5,11 @@ name: CI
 on:
   push:
     branches: ['**']
+  # Los PRs desde ramas del propio repo ya disparan el 'push' de esa rama; el
+  # job de abajo ignora el evento pull_request en ese caso para no correr dos
+  # veces el mismo commit. Los PRs de fork sí se atienden (ahí no hay push).
   pull_request:
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 permissions:
@@ -17,6 +21,10 @@ concurrency:
 
 jobs:
   build:
+    # Un push a una rama del repo ya lanza este workflow. El evento
+    # pull_request solo se atiende si el PR viene de un fork (ahí no hay push
+    # en el repo y sin esto no se probaría nada).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
