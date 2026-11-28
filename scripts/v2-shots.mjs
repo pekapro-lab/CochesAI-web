@@ -17,7 +17,7 @@ const server = createServer((req, res) => {
   res.end(readFileSync(f))
 })
 await new Promise((r) => server.listen(5197, r))
-const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] })
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] })
 const page = await browser.newPage({ viewport: { width: 1280, height: 600 } })
 const errors = []
 page.on('pageerror', (e) => errors.push(String(e)))

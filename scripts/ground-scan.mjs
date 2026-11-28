@@ -16,10 +16,10 @@ const server = createServer((req, res) => {
   res.end(readFileSync(file))
 })
 await new Promise((r) => server.listen(PORT, r))
-const browser = await chromium.launch({ headless: true, args: ['--use-gl=swiftshader'] })
+const browser = await chromium.launch({ headless: true, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })
 const page = await browser.newPage()
 await page.goto(`http://127.0.0.1:${PORT}/CochesAI-web/`, { waitUntil: 'domcontentloaded' })
-await page.waitForFunction(() => window.__PEKA_R__)
+await page.waitForFunction(() => window.__PEKA_R__, null, { timeout: 60000 })
 let fail = false
 for (const id of ['norte', 'bosque', 'costa', 'sierra']) {
   const r = await page.evaluate((id) => {

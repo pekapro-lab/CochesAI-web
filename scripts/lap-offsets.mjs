@@ -18,7 +18,7 @@ if (!BASE) {
   })
   await new Promise((r) => server.listen(5195, r))
 }
-const browser = await chromium.launch({ args: ['--use-gl=swiftshader'] })
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
 const tracks = (process.env.TRACKS || 'norte,bosque,costa,sierra').split(',')
 const runs = []
@@ -27,7 +27,7 @@ const results = []
 for (const [id, off] of runs) results.push(await (async () => {
   const page = await ctx.newPage()
   await page.goto(BASE || 'http://127.0.0.1:5195/CochesAI-web/', { waitUntil: 'domcontentloaded' })
-  await page.waitForFunction(() => window.__PEKA_R__)
+  await page.waitForFunction(() => window.__PEKA_R__, null, { timeout: 60000 })
   return page.evaluate(async ([id, off]) => {
     const g = window.__PEKA_R__
     g.startTrack(id); g.state = 'racing'; g.ui.hideCountdown(); g.lapStart = performance.now()
