@@ -97,7 +97,7 @@ export class Game {
     this.scene.add(this.hemi)
     this.sun = new THREE.DirectionalLight(0xffc8a0, 0.55)
     this.sun.position.set(-40, 60, 20)
-    this.sun.castShadow = true
+    this.sun.castShadow = this.quality !== 'baja'
     this.sun.shadow.mapSize.set(1024, 1024)
     this.sun.shadow.camera.near = 1
     this.sun.shadow.camera.far = 200
@@ -120,9 +120,12 @@ export class Game {
     this.scene.environmentIntensity = 0.4
     this.garage = new Garage(this)
     loadCarHdri(this.renderer).then(() => setRealCarEnv(this.timeOfDay !== 'day')).catch((e) => console.warn('[realista] HDRI', e?.message || e))
-    // Wider shadow camera so day shadows look good on track
-    const sm = this.isIOS ? 1024 : 2048
+    // Wider shadow camera so day shadows look good on track.
+    // El tamaño sale de la calidad guardada: si el jugador dejó 'baja', no se
+    // crean sombras de 2048 para apagarlas después.
+    const sm = this.quality === 'alta' && !this.isIOS ? 2048 : 1024
     this.sun.shadow.mapSize.set(sm, sm)
+    this.sun.castShadow = this.timeOfDay === 'day' && this.quality !== 'baja'
     this.sun.shadow.camera.left = -90
     this.sun.shadow.camera.right = 90
     this.sun.shadow.camera.top = 90
@@ -351,7 +354,7 @@ export class Game {
       this.sun.intensity = 2.0
       this.sun.color.set(0xfff3d6)
       this.sun.position.set(70, 110, 45)
-      this.sun.castShadow = true
+      this.sun.castShadow = this.quality !== 'baja'
       this.ambient.intensity = 0.55
       this.ambient.color.set(0xffffff)
       this.renderer.toneMappingExposure = 1.15
