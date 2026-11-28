@@ -186,7 +186,10 @@ export class AudioEngine {
       spool = this._demoBoost
     }
     spool = Math.max(0, Math.min(1, spool))
-    if (p.turbo > 0.15 && this._boost > 0.4 && spool < this._boost - 0.12 && throttle < 0.22) this._blowoff(this.ctx.currentTime, this._boost)
+    // El soplo solo con datos reales del coche: en el garaje (boost = null) se
+    // inventa el soplado, y al salir a pista eso disparaba un soplo fantasma.
+    const real = boost != null
+    if (real && p.turbo > 0.15 && this._boost > 0.4 && spool < this._boost - 0.12 && throttle < 0.22) this._blowoff(this.ctx.currentTime, this._boost)
     this._boost = spool
     const rn = Math.max(0, Math.min(1, (this._rpm - p.idle) / (p.redline - p.idle)))
     const f = (this._rpm / 60) * (p.cyl / 2) * 0.5 * p.tone // firing order, voiced an octave down for body
@@ -245,6 +248,8 @@ export class AudioEngine {
       g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.setTargetAtTime(0.0001, t, fast ? 0.02 : 0.12)
     }
     this._rpm = this.profile.idle
+    this._boost = 0
+    this._demoBoost = 0
     this._lastThrottle = 0
   }
 
