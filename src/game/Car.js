@@ -298,7 +298,9 @@ export class Car {
     this.highSpeedBoost = opts.highSpeedBoost || 0
     this.brakeForce = 40
     this._steerCurrent = 0
-    this.gear = 'D'
+    this.gear = '1'
+    this._gearN = 0
+    this.boost = 0
     this.signedSpeedKmh = 0
     this._baseSlip = [0, 1, 2, 3].map((i) => this.vehicle.wheelInfos[i].frictionSlip)
     this._wheelSurf = [SURFACE_PRESETS.dry, SURFACE_PRESETS.dry, SURFACE_PRESETS.dry, SURFACE_PRESETS.dry]
@@ -510,6 +512,36 @@ export class Car {
     this.surfaceLabel = shown.name
   }
 
+  /**
+   * Six ratios. Low gear multiplies torque; the shift points match the engine
+   * sound, so what the ear hears is the gear the physics is actually in.
+   */
+  _shift(kmh) {
+    const up = [34, 64, 98, 134, 170]
+    const down = [22, 50, 82, 118, 152]
+    const ratio = [1.15, 1.06, 1, 0.94, 0.9, 0.86]
+    let g = this._gearN || 0
+    if (g < 5 && kmh > up[g]) g++
+    else if (g > 0 && kmh < down[g - 1]) g--
+    this._gearN = g
+    this.gear = String(g + 1)
+    return ratio[g]
+  }
+
+  /** Turbo lag: a bigger turbo number spools slower and hits harder. */
+  _spool(dt, throttle, reverse) {
+    const turbo = this.model?.sound?.turbo || 0
+    if (this.boost == null) this.boost = 0
+    if (turbo <= 0 || reverse) {
+      this.boost += (0 - this.boost) * Math.min(1, dt * 7)
+      return
+    }
+    const flow = Math.min(1, this.speedKmh / (42 + turbo * 55))
+    const target = throttle > 0.18 ? flow * (0.4 + 0.6 * Math.min(1, throttle)) : 0
+    const rate = target > this.boost ? 2.6 - turbo * 1.3 : 6 + turbo * 2
+    this.boost += (target - this.boost) * Math.min(1, dt * rate)
+  }
+
   update(dt, controls) {
     this.chassisBody.wakeUp()
     // Anti-roll / upright: keep the chassis from banking so hard that wheel rays miss the plane
@@ -574,14 +606,21 @@ export class Car {
     // Reverse when stopped (<~2 km/h forward) or already rolling backward
     const wantReverse = controls.brake > 0 && speed < 0.6
     const wantBrake = controls.brake > 0 && !wantReverse && speed > 0.3
-    this.gear = wantReverse ? 'R' : 'D'
+    this.gear = wantReverse ? 'R' : this.gear
     this.fx = { brake: wantBrake && Number(controls.brake) > 0.05, reverse: wantReverse, hb: !!controls.handbrake }
+    // Marcha real y turbo: la fuerza cambia con la relación y con lo que haya
+    // soplado el turbo. Con 'R' no se toca la marcha.
+    const ratio = wantReverse ? 1 : this._shift(this.speedKmh)
+    this._spool(dt, Number(controls.throttle) || 0, wantReverse)
 
     if (controls.throttle && !wantReverse) {
       // Extra pull above 100 km/h so the player can reach its higher top speed (rivals: highSpeedBoost 0)
       const hi = Math.max(0, Math.min(1, (this.speedKmh - 100) / 60))
       const dig = (this._wheelSurf[2].digIn + this._wheelSurf[3].digIn) * 0.5
-      const force = this.maxForce * (1 + this.highSpeedBoost * hi) * (controls.handbrake ? 0.55 : 1) * (1 - dig * 0.85) * Math.min(1, Number(controls.throttle) || 0)
+      // El turbo suma empuje encima de la curva de cada marcha; las superficies
+      // (grava) siguen restándolo como antes.
+      const turbo = this.model?.sound?.turbo || 0
+      const force = this.maxForce * ratio * (1 + this.highSpeedBoost * hi) * (1 + turbo * (this.boost || 0) * 0.32) * (controls.handbrake ? 0.55 : 1) * (1 - dig * 0.85) * Math.min(1, Number(controls.throttle) || 0)
       // Negative engine force = forward (indexForwardAxis = 2)
       this.vehicle.applyEngineForce(-force, 2)
       this.vehicle.applyEngineForce(-force, 3)
@@ -728,7 +767,9 @@ export class Car {
     b.quaternion.setFromEuler(0, yaw || 0, 0)
     b.wakeUp()
     this._steerCurrent = 0
-    this.gear = 'D'
+    this.gear = '1'
+    this._gearN = 0
+    this.boost = 0
     for (let i = 0; i < 4; i++) {
       this.vehicle.setBrake(0, i)
       this.vehicle.applyEngineForce(0, i)

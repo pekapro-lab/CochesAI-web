@@ -562,6 +562,10 @@ export class Game {
           throttle: controls.throttle,
           brake: controls.brake,
           slip: this.car.slip || 0,
+          // La marcha real y el turbo: el sonido sube y baja con lo que pasa
+          // en la física, en vez de adivinarlo por la velocidad.
+          gear: this.car.gear === 'R' ? -1 : (this.car._gearN || 0),
+          boost: this.car.boost || 0,
         })
         this._raceAfterStep(dt)
         this.lap = Math.max(1, Math.min(this.totalLaps, this.me.lap))

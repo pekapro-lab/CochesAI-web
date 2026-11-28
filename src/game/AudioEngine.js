@@ -16,6 +16,7 @@ export class AudioEngine {
     this.profile = { ...DEFAULT_PROFILE }
     this._gearIdx = 0
     this._lastThrottle = 0
+    this._boost = 0
     this._popCooldown = 0
     this.music = new Music(this)
   }
@@ -114,19 +115,33 @@ export class AudioEngine {
     this.setProfile(this.profile)
   }
 
-  /** Simulated rpm with a 6-speed gearbox scaled to each engine's idle/redline (sound only). */
-  _rpmFor(speedKmh, throttle) {
+  /**
+   * Rpm from the real gear when the car knows it (gearN); otherwise worked out
+   * from the speed. Throttle loads the engine, lifting off lets it fall.
+   */
+  _rpmFor(speedKmh, throttle, gearN) {
     const p = this.profile
-    const gears = [0, 34, 64, 98, 134, 170, 999]
-    let g = 0
-    while (g < gears.length - 2 && speedKmh > gears[g + 1]) g++
-    this._gearChanged = g > this._gearIdx
+    const edges = [0, 34, 64, 98, 134, 170, 999]
+    let g = gearN
+    if (g == null || g < 0) {
+      g = 0
+      while (g < 5 && speedKmh > edges[g + 1]) g++
+    }
+    g = Math.max(0, Math.min(5, g | 0))
+    const prev = this._gearIdx
+    this._gearChanged = g !== prev
     this._gearIdx = g
-    const lo = gears[g], hi = Math.min(gears[g + 1], 215)
+    if (g > prev) this._rpm *= 0.76
+    else if (g < prev) this._rpm = Math.min(p.redline, this._rpm * 1.14)
+    const lo = edges[g], hi = Math.min(edges[g + 1], 215)
     const t = Math.max(0, Math.min(1, (speedKmh - lo) / (hi - lo)))
     const span = p.redline - p.idle
-    const base = g === 0 ? p.idle + t * span * 0.85 : p.idle + span * (0.5 + t * 0.45)
-    return Math.max(p.idle * 0.95, base + throttle * span * 0.06 * (speedKmh < 5 ? 4 : 1))
+    const load = Math.max(0, Math.min(1, throttle))
+    const cruise = p.idle + span * (0.26 + t * 0.4)
+    const pulled = p.idle + span * (0.58 + t * 0.4)
+    const lifted = p.idle + span * (0.08 + t * 0.2)
+    const goal = load > 0.12 ? cruise + (pulled - cruise) * load : lifted
+    return Math.max(p.idle * 0.85, Math.min(p.redline, goal))
   }
 
   _pop(t) {
@@ -141,12 +156,37 @@ export class AudioEngine {
     src.start(t, Math.random() * 1.5); src.stop(t + 0.14)
   }
 
-  setDriving({ speedKmh, throttle, brake, slip = 0 }) {
+  /** Soplo del turbo al levantar el pie (solo motores con turbo). */
+  _blowoff(t, amount) {
+    const ctx = this.ctx, e = this._engine
+    const src = ctx.createBufferSource(); src.buffer = this._noise
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 0.8
+    const g = ctx.createGain(); g.gain.value = 0
+    src.connect(bp); bp.connect(g); g.connect(e.master)
+    const a = 0.12 + amount * 0.22
+    g.gain.setValueAtTime(0, t)
+    g.gain.linearRampToValueAtTime(a, t + 0.02)
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.22)
+    src.start(t, Math.random()); src.stop(t + 0.26)
+  }
+
+  setDriving({ speedKmh, throttle, brake, slip = 0, gear = null, boost = null }) {
     if (!this._engine || this.muted) return
     const e = this._engine, p = this.profile
-    const t = this.ctx.currentTime
-    const target = this._rpmFor(speedKmh, throttle)
-    this._rpm += (target - this._rpm) * (this._gearChanged ? 0.6 : 0.22)
+    const reverse = gear === -1
+    this._gearChanged = false
+    const target = reverse ? p.idle * 1.15 : this._rpmFor(speedKmh, throttle, gear)
+    this._rpm += (target - this._rpm) * (this._gearChanged ? 0.72 : 0.2)
+    // El soplo suena al soltar el gas con el turbo cargado.
+    let spool = boost
+    if (spool == null) {
+      const want = p.turbo > 0 && throttle > 0.2 ? throttle : 0
+      this._demoBoost = (this._demoBoost || 0) + (want - (this._demoBoost || 0)) * 0.22
+      spool = this._demoBoost
+    }
+    spool = Math.max(0, Math.min(1, spool))
+    if (p.turbo > 0.15 && this._boost > 0.4 && spool < this._boost - 0.12 && throttle < 0.22) this._blowoff(this.ctx.currentTime, this._boost)
+    this._boost = spool
     const rn = Math.max(0, Math.min(1, (this._rpm - p.idle) / (p.redline - p.idle)))
     const f = (this._rpm / 60) * (p.cyl / 2) * 0.5 * p.tone // firing order, voiced an octave down for body
     e.fund.o.frequency.setTargetAtTime(f, t, 0.035)
@@ -165,10 +205,9 @@ export class AudioEngine {
     let vol = 0.05 + Math.min(speedKmh / 200, 1) * 0.09 + throttle * 0.08 + brake * 0.01
     if (this._gearChanged) { e.gain.gain.cancelScheduledValues(t); e.gain.gain.setValueAtTime(vol * 0.35, t); vol *= 1 }
     e.gain.gain.setTargetAtTime(vol, t, this._gearChanged ? 0.09 : 0.06)
-    // turbo
-    const boost = p.turbo * throttle * rn
+    // turbo: ahora suena con lo que de verdad ha soplado, no con el gas a pelo
     e.turbo.o.frequency.setTargetAtTime(1800 + rn * 3800, t, 0.15)
-    e.turbo.g.gain.setTargetAtTime(boost * 0.05, t, 0.2)
+    e.turbo.g.gain.setTargetAtTime(spool * p.turbo * 0.05, t, 0.2)
     // lift-off: crackles + blow-off
     this._popCooldown -= 1
     if (this._lastThrottle > 0.5 && throttle < 0.2 && rn > 0.35 && p.pops > 0) {

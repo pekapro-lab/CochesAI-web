@@ -350,7 +350,8 @@ export class UI {
     }
     const g = this.el.querySelector('#hud-gear')
     if (g) {
-      g.textContent = gear === 'R' ? 'R' : 'D'
+      // 'R' marcha atrás, '1'..'6' la marcha real; si el coche no la sabe, 'D'
+      g.textContent = gear === 'R' ? 'R' : (gear || 'D')
       g.classList.toggle('reverse', gear === 'R')
     }
   }
