@@ -61,9 +61,13 @@ export class Game {
     this._prMax = Math.min(window.devicePixelRatio || 1, 1.5)
     this._pr = this._prMax
     this._perf = { t: 0, frames: 0 }
-    // Reflection quality: 'high' (256 env + clearcoat) or 'low' (64 env, no clearcoat).
-    // Starts high everywhere; drops automatically if frames stay slow at the lowest resolution.
-    this.quality = localStorage.getItem('cochesai-quality') === 'low' ? 'low' : 'high'
+    // Calidad: 'alta' | 'media' | 'baja'. La elige el jugador en el menú y se
+    // recuerda entre partidas; si nunca ha elegido, se adivina por el tipo de
+    // pantalla. El nivel ya no cambia solo: antes saltaba a 'low' al ir justo
+    // y se quedaba ahí. Lo que sí se adapta es la resolución.
+    this.quality = this._storedQuality()
+    this._prMax = this._prCap()
+    this._pr = this._prMax
     this._slowWindows = 0
     this.renderer = new THREE.WebGLRenderer({
       antialias: false,
@@ -93,7 +97,7 @@ export class Game {
     this.scene.add(this.hemi)
     this.sun = new THREE.DirectionalLight(0xffc8a0, 0.55)
     this.sun.position.set(-40, 60, 20)
-    this.sun.castShadow = true
+    this.sun.castShadow = this.quality !== 'baja'
     this.sun.shadow.mapSize.set(1024, 1024)
     this.sun.shadow.camera.near = 1
     this.sun.shadow.camera.far = 200
@@ -116,9 +120,12 @@ export class Game {
     this.scene.environmentIntensity = 0.4
     this.garage = new Garage(this)
     loadCarHdri(this.renderer).then(() => setRealCarEnv(this.timeOfDay !== 'day')).catch((e) => console.warn('[realista] HDRI', e?.message || e))
-    // Wider shadow camera so day shadows look good on track
-    const sm = this.isIOS ? 1024 : 2048
+    // Wider shadow camera so day shadows look good on track.
+    // El tamaño sale de la calidad guardada: si el jugador dejó 'baja', no se
+    // crean sombras de 2048 para apagarlas después.
+    const sm = this.quality === 'alta' && !this.isIOS ? 2048 : 1024
     this.sun.shadow.mapSize.set(sm, sm)
+    this.sun.castShadow = this.timeOfDay === 'day' && this.quality !== 'baja'
     this.sun.shadow.camera.left = -90
     this.sun.shadow.camera.right = 90
     this.sun.shadow.camera.top = 90
@@ -192,6 +199,7 @@ export class Game {
       localStorage.setItem('cochesai-tod', this.timeOfDay)
       this.ui.setTimeOfDay(this.timeOfDay)
     }
+    this.ui.onQuality = (q) => this.setQuality(q)
     this.ui.bindTouch(this.input)
     // Background/lock screen: never leave the engine droning
     document.addEventListener('visibilitychange', () => {
@@ -199,6 +207,7 @@ export class Game {
       if (document.hidden && this.state === 'racing' && !this.net) this.pause?.()
     })
     this.ui.setTimeOfDay(this.timeOfDay)
+    this.ui.setQuality(this.quality)
   }
 
   startTrack(trackId, opts = {}) {
@@ -266,7 +275,7 @@ export class Game {
     })
     this.ui.drawMinimap(this.track.path, null)
 
-    if (this.quality === 'low') this._applyQualityToCars()
+    this._applyQualityToCars()
     this.input.bind()
     this.state = 'countdown'
     this._countdown = 3
@@ -296,7 +305,7 @@ export class Game {
     const avg = p.t / p.frames
     p.t = 0; p.frames = 0
     let pr = this._pr
-    if (avg > 1 / 40 && pr <= 0.75 && this.quality === 'high') { if (++this._slowWindows >= 3) this._setQuality('low') } else this._slowWindows = 0
+    // El nivel lo elige el jugador: aquí solo se baja la resolución.
     if (avg > 1 / 40 && pr > 0.75) pr = Math.max(0.75, pr - 0.15)
     else if (avg < 1 / 55 && pr < this._prMax) pr = Math.min(this._prMax, pr + 0.1)
     if (pr !== this._pr) {
@@ -310,7 +319,7 @@ export class Game {
     const q = localStorage.getItem('cochesai-bloom')
     if (q === 'no') return false
     if (q === 'si') return true
-    return !this.isIOS && this.quality !== 'low'
+    return !this.isIOS && this.quality !== 'baja'
   }
 
   _render() {
@@ -345,7 +354,7 @@ export class Game {
       this.sun.intensity = 2.0
       this.sun.color.set(0xfff3d6)
       this.sun.position.set(70, 110, 45)
-      this.sun.castShadow = true
+      this.sun.castShadow = this.quality !== 'baja'
       this.ambient.intensity = 0.55
       this.ambient.color.set(0xffffff)
       this.renderer.toneMappingExposure = 1.15
@@ -370,19 +379,48 @@ export class Game {
   }
 
   _skyEnv(mode) {
-    try { return skyEnvironment(this.renderer, mode, this.quality === 'low' ? 64 : 256) } catch { return this.envMap }
+    try { return skyEnvironment(this.renderer, mode, this.quality === 'alta' ? 256 : this.quality === 'media' ? 128 : 64) } catch { return this.envMap }
   }
 
-  /** Lower/raise reflection cost at runtime (visual only). */
-  _setQuality(q) {
-    if (q === this.quality) return
+  /** Calidad guardada; si no hay ninguna, la pantalla manda (táctil = media). */
+  _storedQuality() {
+    const s = localStorage.getItem('cochesai-quality')
+    if (s === 'alta' || s === 'high') return 'alta'
+    if (s === 'media') return 'media'
+    if (s === 'baja' || s === 'low') return 'baja'
+    const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
+    return touch ? 'media' : 'alta'
+  }
+
+  /** Tope de resolución de cada nivel: 'baja' pide menos píxeles que la pantalla. */
+  _prCap() {
+    const dpr = Math.min(window.devicePixelRatio || 1, this.isIOS ? 1.25 : 1.5)
+    if (this.quality === 'baja') return Math.min(dpr, 0.8)
+    if (this.quality === 'media') return Math.min(dpr, 1)
+    return dpr
+  }
+
+  /** Cambia el nivel desde el menú. Se recuerda y no se revierte solo. */
+  setQuality(q) {
+    if (q !== 'alta' && q !== 'media' && q !== 'baja') return
+    if (q === this.quality) { this.ui?.setQuality?.(q); return }
+    localStorage.setItem('cochesai-quality', q)
     this.quality = q
+    this.ui?.setQuality?.(q)
+    this._prMax = this._prCap()
+    this._pr = this._prMax
+    this.renderer.setPixelRatio(this._pr)
+    this.renderer.setSize(window.innerWidth, window.innerHeight, false)
+    const sm = this.quality === 'alta' && !this.isIOS ? 2048 : 1024
+    this.sun.shadow.mapSize.set(sm, sm)
+    if (this.sun.shadow.map) { this.sun.shadow.map.dispose(); this.sun.shadow.map = null }
+    this.sun.castShadow = this.timeOfDay === 'day' && this.quality !== 'baja'
     this.scene.environment = this._skyEnv(this.timeOfDay)
     this._applyQualityToCars()
   }
 
   _applyQualityToCars() {
-    const low = this.quality === 'low'
+    const low = this.quality === 'baja'
     for (const r of this.racers || []) r.car?.mesh?.traverse?.((o) => {
       const m = o.material
       if (!m || !m.isMeshPhysicalMaterial) return

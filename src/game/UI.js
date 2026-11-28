@@ -17,6 +17,7 @@ export class UI {
     this.onRecover = null
     this.onRestartRace = null
     this.onTimeOfDay = null
+    this.onQuality = null
     this.timeOfDay = 'night'
 
     this.el = document.createElement('div')
@@ -52,6 +53,13 @@ export class UI {
             <button class="tod-btn" id="btn-day" type="button" data-tod="day">Día</button>
             <button class="tod-btn" id="btn-night" type="button" data-tod="night">Noche</button>
           </div>
+          <div class="q-label">Calidad</div>
+          <div class="tod-toggle q-toggle" id="q-toggle" role="group" aria-label="Calidad">
+            <button class="tod-btn" type="button" data-q="alta">Alta</button>
+            <button class="tod-btn" type="button" data-q="media">Media</button>
+            <button class="tod-btn" type="button" data-q="baja">Baja</button>
+          </div>
+          <p class="help q-help">Alta: sombras y reflejos completos. Media: el mismo aspecto, más ligera. Baja: para móviles justos.</p>
           <div class="menu-actions">
             <button class="btn" id="btn-mute-menu" type="button">Sonido</button>
             <button class="btn" id="btn-music-menu" type="button">Música: Sí</button>
@@ -187,6 +195,9 @@ export class UI {
     this.el.querySelector('#btn-garage').addEventListener('click', () => this.onGarage?.())
     this.el.querySelector('#btn-day').addEventListener('click', () => this.onTimeOfDay?.('day'))
     this.el.querySelector('#btn-night').addEventListener('click', () => this.onTimeOfDay?.('night'))
+    for (const b of this.el.querySelectorAll('[data-q]')) {
+      b.addEventListener('click', () => this.onQuality?.(b.dataset.q))
+    }
 
     this.lobby = this.el.querySelector('#lobby')
     this.results = this.el.querySelector('#results')
@@ -224,6 +235,12 @@ export class UI {
     this.timeOfDay = mode === 'day' ? 'day' : 'night'
     this.el.querySelector('#btn-day').classList.toggle('active', this.timeOfDay === 'day')
     this.el.querySelector('#btn-night').classList.toggle('active', this.timeOfDay === 'night')
+  }
+
+  /** Marca el botón de calidad elegido (alta | media | baja). */
+  setQuality(q) {
+    this.quality = q
+    for (const b of this.el.querySelectorAll('[data-q]')) b.classList.toggle('active', b.dataset.q === q)
   }
 
   _detectTouch() {

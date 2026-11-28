@@ -1,0 +1,89 @@
+name: CI
+
+# Compila en cada push y en cada pull request. Si el build se rompe, se sabe
+# antes de fusionar, sin depender de abrir el juego a mano.
+on:
+  push:
+    branches: ['**']
+  # Los PRs desde ramas del propio repo ya disparan el 'push' de esa rama; el
+  # job de abajo ignora el evento pull_request en ese caso para no correr dos
+  # veces el mismo commit. Los PRs de fork sí se atienden (ahí no hay push).
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Un push a una rama del repo ya lanza este workflow. El evento
+    # pull_request solo se atiende si el PR viene de un fork (ahí no hay push
+    # en el repo y sin esto no se probaría nada).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Prueba de humo del sonido
+        # Arranca el motor de audio de verdad con un AudioContext simulado.
+        # node --check no ve un identificador que no existe (el `t` que se
+        # perdió al portar setDriving pasaba por válido y reventaba en
+        # ejecución); esta prueba sí lo ve. No necesita navegador.
+        run: npm run test:audio
+
+      - name: Compilar
+        run: npm run build
+
+      - name: Comprobar que el build tiene lo esperado
+        run: |
+          test -f dist/index.html || { echo "Falta dist/index.html"; exit 1; }
+          ls dist/assets/*.js > /dev/null || { echo "Faltan los JS del build"; exit 1; }
+          echo "Build correcto: $(du -sh dist | cut -f1)"
+
+  # Pruebas de juego en un navegador de verdad. Van aparte para que un fallo
+  # de física se distinga de un build roto, y porque tardan más.
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar Chromium para las pruebas
+        run: npx playwright install --with-deps chromium
+
+      - name: Pruebas de juego
+        run: npm run test:all
+
+      - name: Guardar capturas si algo falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas-fallo
+          path: |
+            dist/*.png
+            *.png
+          if-no-files-found: ignore
+          retention-days: 7
