@@ -7,10 +7,10 @@ import { chromium } from 'playwright'
 import { serve } from './serve.mjs'
 const PORT = 5199
 const server = await serve(PORT)
-const browser = await chromium.launch({ args: ['--use-gl=swiftshader'] })
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })
 const page = await browser.newPage()
 await page.goto(`http://127.0.0.1:${PORT}/CochesAI-web/`, { waitUntil: 'domcontentloaded' })
-await page.waitForFunction(() => window.__COCHES__ && window.__COCHES_APP__)
+await page.waitForFunction(() => window.__COCHES__ && window.__COCHES_APP__, null, { timeout: 60000 })
 if (process.env.ALAT) await page.evaluate(([a, b]) => { window.__ALAT__ = a; window.__ABRK__ = b }, [+process.env.ALAT, +(process.env.ABRK || 0)])
 const tracks = (process.env.TRACKS || 'norte,bosque,costa,sierra').split(',')
 const diffs = (process.env.DIFFS || 'facil,normal,dificil').split(',')

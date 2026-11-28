@@ -5,7 +5,7 @@ import { join, extname } from 'path'
 const ROOT='/workspace/CochesAI-web/dist'
 const server = createServer((req, res) => { let url = decodeURIComponent(req.url.split('?')[0]); if (url.startsWith('/CochesAI-web')) url = url.slice(13) || '/'; let f = join(ROOT, url === '/' ? 'index.html' : url); if (!existsSync(f) || statSync(f).isDirectory()) f = join(ROOT, 'index.html'); res.writeHead(200, { 'Content-Type': { '.js': 'text/javascript', '.html': 'text/html' }[extname(f)] || 'application/octet-stream' }); res.end(readFileSync(f)) })
 await new Promise((r) => server.listen(5202, r))
-const browser = await chromium.launch({ args: ['--use-gl=swiftshader'] })
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })
 const page = await browser.newPage()
 await page.goto('http://127.0.0.1:5202/CochesAI-web/'); await page.waitForFunction(() => window.__PEKA_R__)
 await page.evaluate(() => { const g = window.__PEKA_R__; g.startTrack(process?.x||'norte') }).catch(async()=>page.evaluate(() => window.__PEKA_R__.startTrack('norte')))

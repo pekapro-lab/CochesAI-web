@@ -10,13 +10,13 @@ const PORT = 5201
 const server = await serve(PORT)
 const q = process.env.PEER_HOST ? `?peerHost=${process.env.PEER_HOST}` : ''
 const url = `http://127.0.0.1:${PORT}/CochesAI-web/${q}`
-const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--autoplay-policy=no-user-gesture-required'] })
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] })
 const open = async (name) => {
   const ctx = await browser.newContext({ viewport: { width: 640, height: 400 } })
   const page = await ctx.newPage()
   page.on('pageerror', (e) => console.log(name, 'pageerror', e.message))
   await page.goto(url, { waitUntil: 'domcontentloaded' })
-  await page.waitForFunction(() => window.__COCHES_APP__)
+  await page.waitForFunction(() => window.__COCHES_APP__, null, { timeout: 60000 })
   await page.fill('#in-name', name)
   await page.dispatchEvent('#in-name', 'change')
   await page.selectOption('#sel-bots', '2')
