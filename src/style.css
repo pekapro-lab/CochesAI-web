@@ -122,6 +122,19 @@ canvas.game-canvas {
   margin-bottom: 14px;
 }
 
+/* Calidad: el mismo selector de día/noche, con tres botones en vez de dos. */
+.q-toggle { grid-template-columns: 1fr 1fr 1fr; margin-bottom: 6px; }
+
+.q-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 2px 2px 6px;
+}
+
+.q-help { margin-top: 0; }
+
 .tod-btn {
   appearance: none;
   border: 1px solid rgba(255, 255, 255, 0.14);

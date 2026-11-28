@@ -74,7 +74,7 @@ class Skids {
 export class Effects {
   constructor(game) {
     this.game = game
-    const low = game.isIOS || game.quality === 'low'
+    const low = game.isIOS || game.quality === 'baja'
     this.low = low
     this.smoke = new Particles(game.scene, low ? 140 : 360, 0xd8d8d8, false)
     this.sparks = new Particles(game.scene, low ? 90 : 220, 0xffa63a, true)
@@ -144,7 +144,7 @@ export class Effects {
     this.smoke.update(dt); this.sparks.update(dt)
     // sensación de velocidad (overlay CSS barato)
     const me = g.car, kmh = Math.abs(me?.speedKmh || 0)
-    const on = g.state === 'racing' && g.quality !== 'low' && localStorage.getItem('cochesai-speedlines') !== 'no'
+    const on = g.state === 'racing' && g.quality !== 'baja' && localStorage.getItem('cochesai-speedlines') !== 'no'
     const a = on ? Math.max(0, Math.min(1, (kmh - 150) / 90)) * (this.low ? 0.28 : 0.45) : 0
     this.lines.style.opacity = a.toFixed(3)
   }
